@@ -8,6 +8,11 @@ let audioStarted = false;
 let statusMessage = "Initializing...";
 let workletError = false;
 
+// Audio device selection
+let audioDevices = [];
+let selectedDeviceId = null;
+let deviceSelector;
+
 // Noise gate parameters
 let noiseThreshold = 0.01; // Adjust this to filter out ambient noise (0.0 - 1.0)
 let smoothedLevel = 0;
@@ -65,10 +70,28 @@ function setup() {
     statusMessage = "Ready - Click button to start";
     console.log("Setup complete - waiting for user interaction");
 
+    // Create audio device selector
+    createP('Audio Input Device:').position(10, height + 10).style('color', 'white');
+    deviceSelector = createSelect();
+    deviceSelector.position(10, height + 40);
+    deviceSelector.style('width', '300px');
+    deviceSelector.option('Loading devices...', '');
+    deviceSelector.changed(() => {
+        selectedDeviceId = deviceSelector.value();
+        console.log("Device selected:", deviceSelector.elt.options[deviceSelector.elt.selectedIndex].text, "ID:", selectedDeviceId);
+        if (audioStarted) {
+            console.log("Switching audio device...");
+            restartAudioWithDevice();
+        }
+    });
+
+    // Enumerate audio devices
+    enumerateAudioDevices();
+
     // Create noise threshold slider
-    createP('Noise Gate Threshold:').position(10, height + 10).style('color', 'white');
+    createP('Noise Gate Threshold:').position(10, height + 70).style('color', 'white');
     thresholdSlider = createSlider(0, 0.5, noiseThreshold, 0.001);
-    thresholdSlider.position(10, height + 40);
+    thresholdSlider.position(10, height + 100);
     thresholdSlider.style('width', '300px');
     thresholdSlider.input(() => {
         noiseThreshold = thresholdSlider.value();
@@ -77,7 +100,7 @@ function setup() {
 
     // Create sound output controls
     let soundToggleBtn = createButton('Enable Sound Output');
-    soundToggleBtn.position(350, height + 40);
+    soundToggleBtn.position(350, height + 100);
     soundToggleBtn.mousePressed(() => {
         soundEnabled = !soundEnabled;
         soundToggleBtn.html(soundEnabled ? 'Disable Sound Output' : 'Enable Sound Output');
@@ -89,9 +112,9 @@ function setup() {
         console.log("Sound output:", soundEnabled ? "enabled" : "disabled");
     });
 
-    createP('Output Volume:').position(10, height + 70).style('color', 'white');
+    createP('Output Volume:').position(10, height + 130).style('color', 'white');
     volumeSlider = createSlider(0, 1, outputVolume, 0.01);
-    volumeSlider.position(10, height + 100);
+    volumeSlider.position(10, height + 160);
     volumeSlider.style('width', '300px');
     volumeSlider.input(() => {
         outputVolume = volumeSlider.value();
@@ -117,7 +140,7 @@ function setup() {
     }
 }
 
-function startAudio() {
+async function startAudio() {
     console.log("startAudio() called");
 
     if (!audioStarted) {
@@ -126,44 +149,129 @@ function startAudio() {
 
         try {
             // Resume audio context
-            userStartAudio().then(() => {
-                console.log("Audio context resumed");
+            await userStartAudio();
+            console.log("Audio context resumed");
 
-                // Start microphone with error handling
-                mic.start(
-                    // Success callback
-                    () => {
-                        console.log("Microphone started successfully");
-                        audioStarted = true;
-                        statusMessage = "Audio running";
+            // Get selected device constraints
+            let constraints = {
+                audio: selectedDeviceId ? { deviceId: { exact: selectedDeviceId } } : true
+            };
 
-                        // Hide button
-                        let btn = select('#startButton');
-                        if (btn) {
-                            btn.addClass('hidden');
-                        }
+            console.log("Starting audio with device ID:", selectedDeviceId);
 
-                        // Enable mic for FFT analysis
-                        mic.amp(1.0);
-                        console.log("Mic amplitude set, audio level:", mic.getLevel());
-                    },
-                    // Error callback
-                    (err) => {
-                        console.error("Error starting microphone:", err);
-                        statusMessage = "Error: " + err.message;
-                        alert("Could not access microphone. Please check permissions.\n\nError: " + err.message);
+            // Get media stream with selected device
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+            // Set the stream to the mic
+            mic.setSource(stream);
+
+            // Start the mic
+            mic.start(
+                // Success callback
+                () => {
+                    console.log("Microphone started successfully with selected device");
+                    audioStarted = true;
+                    statusMessage = "Audio running";
+
+                    // Hide button
+                    let btn = select('#startButton');
+                    if (btn) {
+                        btn.addClass('hidden');
                     }
-                );
-            }).catch((err) => {
-                console.error("Error resuming audio context:", err);
-                statusMessage = "Error: " + err.message;
-            });
+
+                    // Enable mic for FFT analysis
+                    mic.amp(1.0);
+                    console.log("Mic amplitude set, audio level:", mic.getLevel());
+                },
+                // Error callback
+                (err) => {
+                    console.error("Error starting microphone:", err);
+                    statusMessage = "Error: " + err.message;
+                    alert("Could not access microphone. Please check permissions.\n\nError: " + err.message);
+                }
+            );
         } catch (err) {
             console.error("Exception in startAudio:", err);
             statusMessage = "Exception: " + err.message;
+            alert("Could not access selected device.\n\nError: " + err.message);
         }
     } else {
         console.log("Audio already started");
+    }
+}
+
+async function enumerateAudioDevices() {
+    try {
+        // Request permission first
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        // Get list of devices
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        audioDevices = devices.filter(device => device.kind === 'audioinput');
+
+        console.log("Found audio input devices:", audioDevices.length);
+
+        // Clear and populate selector
+        deviceSelector.html('');
+
+        if (audioDevices.length === 0) {
+            deviceSelector.option('No audio devices found', '');
+            console.error("No audio input devices found");
+            return;
+        }
+
+        // Add each device to selector
+        audioDevices.forEach((device, index) => {
+            let label = device.label || `Microphone ${index + 1}`;
+            console.log(`Device ${index}: ${label} (${device.deviceId})`);
+            deviceSelector.option(label, device.deviceId);
+
+            // Auto-select first device
+            if (index === 0 && !selectedDeviceId) {
+                selectedDeviceId = device.deviceId;
+            }
+        });
+
+        console.log("Device selector populated with", audioDevices.length, "devices");
+    } catch (err) {
+        console.error("Error enumerating devices:", err);
+        deviceSelector.html('');
+        deviceSelector.option('Error loading devices', '');
+    }
+}
+
+async function restartAudioWithDevice() {
+    try {
+        console.log("Stopping current audio input...");
+
+        // Stop current mic
+        if (mic) {
+            mic.stop();
+        }
+
+        // Small delay to ensure clean stop
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Get selected device constraints
+        let constraints = {
+            audio: {
+                deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined
+            }
+        };
+
+        console.log("Starting with constraints:", constraints);
+
+        // Get new stream with selected device
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+        // Set the stream as the mic source
+        mic.stream = stream;
+        audioStarted = true;
+
+        console.log("Audio restarted with selected device");
+    } catch (err) {
+        console.error("Error restarting audio:", err);
+        alert("Could not switch to selected device.\n\nError: " + err.message);
     }
 }
 
