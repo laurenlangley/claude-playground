@@ -74,7 +74,7 @@ function setup() {
     createP('Audio Input Device:').position(10, height + 10).style('color', 'white');
     deviceSelector = createSelect();
     deviceSelector.position(10, height + 40);
-    deviceSelector.style('width', '300px');
+    deviceSelector.style('width', '250px');
     deviceSelector.option('Loading devices...', '');
     deviceSelector.changed(() => {
         selectedDeviceId = deviceSelector.value();
@@ -83,6 +83,14 @@ function setup() {
             console.log("Switching audio device...");
             restartAudioWithDevice();
         }
+    });
+
+    // Add refresh button next to device selector
+    let refreshBtn = createButton('🔄 Refresh Devices');
+    refreshBtn.position(270, height + 40);
+    refreshBtn.mousePressed(() => {
+        console.log("Refreshing device list...");
+        enumerateAudioDevices();
     });
 
     // Enumerate audio devices
@@ -202,13 +210,27 @@ async function startAudio() {
 
 async function enumerateAudioDevices() {
     try {
+        console.log("=== ENUMERATING AUDIO DEVICES ===");
+
         // Request permission first
         await navigator.mediaDevices.getUserMedia({ audio: true });
 
-        // Get list of devices
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        audioDevices = devices.filter(device => device.kind === 'audioinput');
+        // Get list of ALL devices for debugging
+        const allDevices = await navigator.mediaDevices.enumerateDevices();
+        console.log("Total devices found:", allDevices.length);
 
+        // Log all devices with detailed info
+        console.log("\n--- ALL DEVICES (including outputs) ---");
+        allDevices.forEach((device, index) => {
+            console.log(`${index}: [${device.kind}] ${device.label || 'Unnamed'}`);
+            console.log(`   deviceId: ${device.deviceId.substring(0, 20)}...`);
+            console.log(`   groupId: ${device.groupId.substring(0, 20)}...`);
+        });
+
+        // Filter audio inputs
+        audioDevices = allDevices.filter(device => device.kind === 'audioinput');
+
+        console.log("\n--- AUDIO INPUT DEVICES ONLY ---");
         console.log("Found audio input devices:", audioDevices.length);
 
         // Clear and populate selector
@@ -216,25 +238,37 @@ async function enumerateAudioDevices() {
 
         if (audioDevices.length === 0) {
             deviceSelector.option('No audio devices found', '');
-            console.error("No audio input devices found");
+            console.error("❌ No audio input devices found!");
+            console.log("TROUBLESHOOTING:");
+            console.log("1. Check System Preferences > Sound > Input");
+            console.log("2. Ensure 3.5mm device is connected and enabled");
+            console.log("3. Try unplugging and replugging the device");
+            console.log("4. Click the Refresh button after enabling device");
             return;
         }
 
-        // Add each device to selector
+        // Add each device to selector with detailed logging
         audioDevices.forEach((device, index) => {
             let label = device.label || `Microphone ${index + 1}`;
-            console.log(`Device ${index}: ${label} (${device.deviceId})`);
+            console.log(`\n✓ Device ${index}:`);
+            console.log(`  Name: ${label}`);
+            console.log(`  ID: ${device.deviceId.substring(0, 30)}...`);
+            console.log(`  Group: ${device.groupId.substring(0, 30)}...`);
+
             deviceSelector.option(label, device.deviceId);
 
             // Auto-select first device
             if (index === 0 && !selectedDeviceId) {
                 selectedDeviceId = device.deviceId;
+                console.log(`  ⭐ Auto-selected as default`);
             }
         });
 
-        console.log("Device selector populated with", audioDevices.length, "devices");
+        console.log("\n✅ Device selector populated with", audioDevices.length, "devices");
+        console.log("=== END DEVICE ENUMERATION ===\n");
     } catch (err) {
-        console.error("Error enumerating devices:", err);
+        console.error("❌ Error enumerating devices:", err);
+        console.error("Error details:", err.message);
         deviceSelector.html('');
         deviceSelector.option('Error loading devices', '');
     }
