@@ -19,13 +19,19 @@ let smoothedLevel = 0;
 let thresholdSlider;
 let showControls = true;
 
-// Sound synthesis parameters
-let oscillators = [];
-let numOscillators = 5; // Number of simultaneous tones to play
+// Sound synthesis parameters - Heartbeat detection
+let heartbeatOsc;
+let heartbeatEnv;
 let soundEnabled = false;
 let soundToggle;
 let volumeSlider;
 let outputVolume = 0.3;
+
+// Beat detection parameters
+let lastBeatTime = 0;
+let beatCooldown = 150; // Minimum ms between beats
+let peakHistory = [];
+let peakHistoryLength = 10;
 
 // Catch worklet loading errors
 window.addEventListener('unhandledrejection', function(event) {
@@ -107,17 +113,17 @@ function setup() {
     });
 
     // Create sound output controls
-    let soundToggleBtn = createButton('Enable Sound Output');
+    let soundToggleBtn = createButton('Enable Heartbeat Sound');
     soundToggleBtn.position(350, height + 100);
     soundToggleBtn.mousePressed(() => {
         soundEnabled = !soundEnabled;
-        soundToggleBtn.html(soundEnabled ? 'Disable Sound Output' : 'Enable Sound Output');
+        soundToggleBtn.html(soundEnabled ? 'Disable Heartbeat Sound' : 'Enable Heartbeat Sound');
         if (soundEnabled) {
-            initOscillators();
+            initHeartbeat();
         } else {
-            stopOscillators();
+            stopHeartbeat();
         }
-        console.log("Sound output:", soundEnabled ? "enabled" : "disabled");
+        console.log("Heartbeat sound:", soundEnabled ? "enabled" : "disabled");
     });
 
     createP('Output Volume:').position(10, height + 130).style('color', 'white');
@@ -311,62 +317,77 @@ async function restartAudioWithDevice() {
     }
 }
 
-function initOscillators() {
-    // Stop any existing oscillators
-    stopOscillators();
+function initHeartbeat() {
+    // Stop any existing heartbeat
+    stopHeartbeat();
 
-    // Create oscillators for polyphonic synthesis with ethereal character
-    for (let i = 0; i < numOscillators; i++) {
-        // Use triangle waves for softer, more organic sound
-        let osc = new p5.Oscillator('triangle');
-        osc.amp(0);
-        osc.freq(100); // Start at low frequency (heartbeat range)
-        osc.start();
-        oscillators.push(osc);
-    }
-    console.log("Oscillators initialized with triangle waves:", numOscillators);
+    // Create low-frequency oscillator for heartbeat "thump"
+    heartbeatOsc = new p5.Oscillator('triangle');
+    heartbeatOsc.amp(0);
+    heartbeatOsc.freq(60); // Deep bass frequency for realistic heartbeat
+    heartbeatOsc.start();
+
+    // Create envelope for heartbeat pulse shape
+    heartbeatEnv = new p5.Envelope();
+    heartbeatEnv.setADSR(0.01, 0.15, 0.0, 0.1); // Quick attack, quick decay, no sustain
+    heartbeatEnv.setRange(outputVolume, 0);
+
+    console.log("Heartbeat synthesizer initialized");
 }
 
-function stopOscillators() {
-    for (let osc of oscillators) {
-        osc.stop();
+function stopHeartbeat() {
+    if (heartbeatOsc) {
+        heartbeatOsc.stop();
+        heartbeatOsc = null;
     }
-    oscillators = [];
-    console.log("Oscillators stopped");
+    heartbeatEnv = null;
+    console.log("Heartbeat stopped");
 }
 
-function updateSoundOutput(spectrum) {
-    if (!soundEnabled || !audioStarted) return;
+function detectAndPlayHeartbeat() {
+    if (!soundEnabled || !audioStarted || !heartbeatOsc) return;
 
-    // Find the top N frequency peaks with emphasis on lower frequencies
-    let peaks = findFrequencyPeaks(spectrum, numOscillators);
+    // Track peak history for adaptive threshold
+    peakHistory.push(smoothedLevel);
+    if (peakHistory.length > peakHistoryLength) {
+        peakHistory.shift();
+    }
 
-    // Use smoothedLevel to control overall volume (heartbeat intensity)
-    // Map from 0.0-0.5 input level to 0.0-1.0 volume multiplier
-    let globalVolume = map(smoothedLevel, 0, 0.5, 0, 1, true);
-    globalVolume = pow(globalVolume, 1.5); // Exponential curve for more dynamic response
+    // Calculate adaptive threshold based on recent peaks
+    let avgPeak = peakHistory.reduce((a, b) => a + b, 0) / peakHistory.length;
+    let beatThreshold = max(noiseThreshold * 1.5, avgPeak * 0.7);
 
-    // Update oscillators with peak frequencies
-    for (let i = 0; i < oscillators.length; i++) {
-        if (i < peaks.length) {
-            let peak = peaks[i];
-            let freq = peak.frequency;
+    // Detect beat: current level crosses threshold AND enough time has passed
+    let now = millis();
+    let timeSinceLastBeat = now - lastBeatTime;
+    let isBeat = smoothedLevel > beatThreshold && timeSinceLastBeat > beatCooldown;
 
-            // Weight amplitude by frequency (emphasize low frequencies like heartbeat)
-            let freqWeight = map(freq, 20, 4000, 1.5, 0.3, true); // Lower freqs = louder
+    if (isBeat) {
+        // Trigger heartbeat sound
+        playHeartbeat(smoothedLevel);
+        lastBeatTime = now;
 
-            // Calculate amplitude with global volume control
-            let amplitude = map(peak.amplitude, 0, 255, 0, outputVolume);
-            amplitude *= freqWeight * globalVolume;
-            amplitude = constrain(amplitude, 0, outputVolume);
-
-            // Very smooth transitions for ethereal quality
-            oscillators[i].freq(freq, 0.3); // Slow, smooth frequency glide
-            oscillators[i].amp(amplitude, 0.4); // Slow, smooth amplitude envelope
-        } else {
-            oscillators[i].amp(0, 0.5); // Very slow fade out for ethereal trails
+        // Log beat detection
+        if (frameCount % 30 === 0) {
+            console.log("💓 Heartbeat detected! Level:", smoothedLevel.toFixed(4));
         }
     }
+}
+
+function playHeartbeat(intensity) {
+    // Map intensity to volume (louder input = louder heartbeat)
+    let volume = map(intensity, noiseThreshold, 0.5, 0.2, 1.0, true);
+    volume = constrain(volume * outputVolume, 0, outputVolume);
+
+    // Set frequency based on intensity (slightly higher pitch for stronger beats)
+    let freq = map(intensity, noiseThreshold, 0.5, 50, 80, true);
+    heartbeatOsc.freq(freq);
+
+    // Update envelope range with current volume
+    heartbeatEnv.setRange(volume, 0);
+
+    // Trigger the heartbeat envelope
+    heartbeatEnv.play(heartbeatOsc);
 }
 
 function findFrequencyPeaks(spectrum, numPeaks) {
@@ -445,15 +466,8 @@ function draw() {
     // Apply noise gate - only visualize if above threshold
     let isAboveThreshold = smoothedLevel > noiseThreshold;
 
-    // Update sound output based on spectrum
-    if (isAboveThreshold) {
-        updateSoundOutput(spectrum);
-    } else if (soundEnabled) {
-        // Very slow, ethereal fade out when below threshold
-        for (let osc of oscillators) {
-            osc.amp(0, 0.8); // Long fade out for smooth, lingering tones
-        }
-    }
+    // Detect and play heartbeat sounds based on input signal
+    detectAndPlayHeartbeat();
 
     // Log audio level for debugging (only occasionally to avoid console spam)
     if (frameCount % 60 === 0) {
