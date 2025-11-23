@@ -30,9 +30,18 @@ This project converts Processing code (using Minim library) to p5.js (using p5.s
 
 ### Setup Instructions
 
-1. **Open the application**:
-   - Simply open `index.html` in a modern web browser
-   - Or serve via local web server (required for some browsers)
+**IMPORTANT**: Due to browser security restrictions with AudioWorklets, you must run a local web server. Opening the HTML file directly will cause errors.
+
+1. **Start the local web server**:
+   ```bash
+   ./start-server.sh
+   ```
+   Then open your browser to: **http://localhost:8000**
+
+   *Alternative: If you prefer Python directly:*
+   ```bash
+   python3 -m http.server 8000
+   ```
 
 2. **Configure audio input**:
    - Connect your audio device (microphone, line-in, stethoscope, etc.)
@@ -65,9 +74,10 @@ To use with specialized devices like an electronically converted stethoscope:
 
 ```
 /
-├── index.html      # Main HTML file with p5.js library imports
-├── sketch.js       # p5.js sketch with audio visualization code
-└── README.md       # This file
+├── index.html        # Main HTML file with p5.js library imports
+├── sketch.js         # p5.js sketch with audio visualization code
+├── start-server.sh   # Script to start local web server
+└── README.md         # This file
 ```
 
 ### Customization

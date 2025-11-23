@@ -6,10 +6,24 @@ let hVal;
 let rWidth, rHeight;
 let audioStarted = false;
 let statusMessage = "Initializing...";
+let workletError = false;
+
+// Catch worklet loading errors
+window.addEventListener('unhandledrejection', function(event) {
+    if (event.reason && event.reason.message &&
+        event.reason.message.includes('worklet')) {
+        console.warn("AudioWorklet failed to load. This is expected when opening HTML directly.");
+        console.warn("Solution: Run './start-server.sh' and open http://localhost:8000");
+        workletError = true;
+        statusMessage = "Please use local server - see console";
+        event.preventDefault(); // Prevent the error from appearing in console
+    }
+});
 
 function setup() {
     createCanvas(640, 480);
     console.log("Setup started");
+    console.log("If you see worklet errors, run: ./start-server.sh");
 
     // Initialize audio input
     mic = new p5.AudioIn();
