@@ -276,15 +276,7 @@ async function enumerateAudioDevices() {
 
 async function restartAudioWithDevice() {
     try {
-        console.log("Stopping current audio input...");
-
-        // Stop current mic
-        if (mic) {
-            mic.stop();
-        }
-
-        // Small delay to ensure clean stop
-        await new Promise(resolve => setTimeout(resolve, 100));
+        console.log("Switching to selected device...");
 
         // Get selected device constraints
         let constraints = {
@@ -293,19 +285,29 @@ async function restartAudioWithDevice() {
             }
         };
 
-        console.log("Starting with constraints:", constraints);
+        console.log("Requesting new device with constraints:", constraints);
 
         // Get new stream with selected device
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
-        // Set the stream as the mic source
-        mic.stream = stream;
-        audioStarted = true;
+        console.log("New stream obtained, switching input source...");
 
-        console.log("Audio restarted with selected device");
+        // Disconnect old stream if it exists
+        if (mic.stream) {
+            mic.stream.getTracks().forEach(track => track.stop());
+        }
+
+        // Set the new stream as the mic source
+        mic.stream = stream;
+
+        // Reconnect to FFT
+        fft.setInput(mic);
+
+        console.log("✅ Audio device switched successfully");
     } catch (err) {
-        console.error("Error restarting audio:", err);
-        alert("Could not switch to selected device.\n\nError: " + err.message);
+        console.error("❌ Error switching device:", err);
+        console.error("Error details:", err.message);
+        alert("Could not switch to selected device.\n\nError: " + err.message + "\n\nTry clicking the Start button again.");
     }
 }
 
