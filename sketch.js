@@ -28,8 +28,7 @@ function setup() {
     strokeCap(SQUARE);
 
     background(0);
-    fade = createImage(width, height);
-    fade.copy(get(), 0, 0, width, height, 0, 0, width, height);
+    fade = null; // Will be initialized in first draw
 
     rWidth = width * 0.99;
     rHeight = height * 0.99;
@@ -124,9 +123,11 @@ function draw() {
     }
 
     // Draw faded previous frame
-    tint(255, 255, 255, 254);
-    image(fade, (width - rWidth) / 2, (height - rHeight) / 2, rWidth, rHeight);
-    noTint();
+    if (fade) {
+        tint(255, 255, 255, 254);
+        image(fade, (width - rWidth) / 2, (height - rHeight) / 2, rWidth, rHeight);
+        noTint();
+    }
 
     // Get frequency spectrum
     let spectrum = fft.analyze();
@@ -166,7 +167,7 @@ function draw() {
     }
 
     // Capture current frame for fade effect
-    fade.copy(get(), 0, 0, width, height, 0, 0, width, height);
+    fade = get();
 
     // Draw white frequency bars on top
     stroke(255);
