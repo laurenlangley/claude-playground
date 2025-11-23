@@ -171,15 +171,16 @@ function initOscillators() {
     // Stop any existing oscillators
     stopOscillators();
 
-    // Create oscillators for polyphonic synthesis
+    // Create oscillators for polyphonic synthesis with ethereal character
     for (let i = 0; i < numOscillators; i++) {
-        let osc = new p5.Oscillator('sine');
+        // Use triangle waves for softer, more organic sound
+        let osc = new p5.Oscillator('triangle');
         osc.amp(0);
-        osc.freq(440); // Default frequency
+        osc.freq(100); // Start at low frequency (heartbeat range)
         osc.start();
         oscillators.push(osc);
     }
-    console.log("Oscillators initialized:", numOscillators);
+    console.log("Oscillators initialized with triangle waves:", numOscillators);
 }
 
 function stopOscillators() {
@@ -193,20 +194,33 @@ function stopOscillators() {
 function updateSoundOutput(spectrum) {
     if (!soundEnabled || !audioStarted) return;
 
-    // Find the top N frequency peaks
+    // Find the top N frequency peaks with emphasis on lower frequencies
     let peaks = findFrequencyPeaks(spectrum, numOscillators);
+
+    // Use smoothedLevel to control overall volume (heartbeat intensity)
+    // Map from 0.0-0.5 input level to 0.0-1.0 volume multiplier
+    let globalVolume = map(smoothedLevel, 0, 0.5, 0, 1, true);
+    globalVolume = pow(globalVolume, 1.5); // Exponential curve for more dynamic response
 
     // Update oscillators with peak frequencies
     for (let i = 0; i < oscillators.length; i++) {
         if (i < peaks.length) {
             let peak = peaks[i];
             let freq = peak.frequency;
-            let amplitude = map(peak.amplitude, 0, 255, 0, outputVolume);
 
-            oscillators[i].freq(freq, 0.1); // Smooth frequency transition
-            oscillators[i].amp(amplitude, 0.1); // Smooth amplitude transition
+            // Weight amplitude by frequency (emphasize low frequencies like heartbeat)
+            let freqWeight = map(freq, 20, 4000, 1.5, 0.3, true); // Lower freqs = louder
+
+            // Calculate amplitude with global volume control
+            let amplitude = map(peak.amplitude, 0, 255, 0, outputVolume);
+            amplitude *= freqWeight * globalVolume;
+            amplitude = constrain(amplitude, 0, outputVolume);
+
+            // Very smooth transitions for ethereal quality
+            oscillators[i].freq(freq, 0.3); // Slow, smooth frequency glide
+            oscillators[i].amp(amplitude, 0.4); // Slow, smooth amplitude envelope
         } else {
-            oscillators[i].amp(0, 0.05); // Fade out unused oscillators
+            oscillators[i].amp(0, 0.5); // Very slow fade out for ethereal trails
         }
     }
 }
@@ -221,7 +235,7 @@ function findFrequencyPeaks(spectrum, numPeaks) {
         let val = spectrum[i];
 
         // Check if this is a local maximum and above threshold
-        if (val > 20 && // Minimum amplitude threshold
+        if (val > 15 && // Lower threshold for more sensitivity
             val > spectrum[i - 1] &&
             val > spectrum[i - 2] &&
             val > spectrum[i + 1] &&
@@ -230,18 +244,24 @@ function findFrequencyPeaks(spectrum, numPeaks) {
             // Calculate frequency in Hz
             let freq = (i * nyquist) / (spectrum.length / 2);
 
-            // Limit to audible range (20 Hz - 4000 Hz for stethoscope)
-            if (freq >= 20 && freq <= 4000) {
+            // Focus on lower frequencies for heartbeat-like quality
+            // Emphasize 20 Hz - 800 Hz range (typical heartbeat spectrum)
+            if (freq >= 20 && freq <= 2000) {
+                // Weight peaks by inverse of frequency (boost low frequencies)
+                let freqBoost = map(freq, 20, 2000, 3.0, 0.5, true);
+                let weightedAmplitude = val * freqBoost;
+
                 peaks.push({
                     frequency: freq,
-                    amplitude: val,
+                    amplitude: weightedAmplitude,
+                    rawAmplitude: val,
                     index: i
                 });
             }
         }
     }
 
-    // Sort by amplitude (loudest first)
+    // Sort by weighted amplitude (boosted low frequencies will appear first)
     peaks.sort((a, b) => b.amplitude - a.amplitude);
 
     // Return top N peaks
@@ -285,9 +305,9 @@ function draw() {
     if (isAboveThreshold) {
         updateSoundOutput(spectrum);
     } else if (soundEnabled) {
-        // Fade out all oscillators when below threshold
+        // Very slow, ethereal fade out when below threshold
         for (let osc of oscillators) {
-            osc.amp(0, 0.1);
+            osc.amp(0, 0.8); // Long fade out for smooth, lingering tones
         }
     }
 
