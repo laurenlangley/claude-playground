@@ -14,6 +14,14 @@ let smoothedLevel = 0;
 let thresholdSlider;
 let showControls = true;
 
+// Sound synthesis parameters
+let oscillators = [];
+let numOscillators = 5; // Number of simultaneous tones to play
+let soundEnabled = false;
+let soundToggle;
+let volumeSlider;
+let outputVolume = 0.3;
+
 // Catch worklet loading errors
 window.addEventListener('unhandledrejection', function(event) {
     if (event.reason && event.reason.message &&
@@ -65,6 +73,29 @@ function setup() {
     thresholdSlider.input(() => {
         noiseThreshold = thresholdSlider.value();
         console.log("Noise threshold set to:", noiseThreshold);
+    });
+
+    // Create sound output controls
+    let soundToggleBtn = createButton('Enable Sound Output');
+    soundToggleBtn.position(350, height + 40);
+    soundToggleBtn.mousePressed(() => {
+        soundEnabled = !soundEnabled;
+        soundToggleBtn.html(soundEnabled ? 'Disable Sound Output' : 'Enable Sound Output');
+        if (soundEnabled) {
+            initOscillators();
+        } else {
+            stopOscillators();
+        }
+        console.log("Sound output:", soundEnabled ? "enabled" : "disabled");
+    });
+
+    createP('Output Volume:').position(10, height + 70).style('color', 'white');
+    volumeSlider = createSlider(0, 1, outputVolume, 0.01);
+    volumeSlider.position(10, height + 100);
+    volumeSlider.style('width', '300px');
+    volumeSlider.input(() => {
+        outputVolume = volumeSlider.value();
+        console.log("Output volume set to:", outputVolume.toFixed(2));
     });
 
     // Set up button interaction - try multiple methods
@@ -136,6 +167,87 @@ function startAudio() {
     }
 }
 
+function initOscillators() {
+    // Stop any existing oscillators
+    stopOscillators();
+
+    // Create oscillators for polyphonic synthesis
+    for (let i = 0; i < numOscillators; i++) {
+        let osc = new p5.Oscillator('sine');
+        osc.amp(0);
+        osc.freq(440); // Default frequency
+        osc.start();
+        oscillators.push(osc);
+    }
+    console.log("Oscillators initialized:", numOscillators);
+}
+
+function stopOscillators() {
+    for (let osc of oscillators) {
+        osc.stop();
+    }
+    oscillators = [];
+    console.log("Oscillators stopped");
+}
+
+function updateSoundOutput(spectrum) {
+    if (!soundEnabled || !audioStarted) return;
+
+    // Find the top N frequency peaks
+    let peaks = findFrequencyPeaks(spectrum, numOscillators);
+
+    // Update oscillators with peak frequencies
+    for (let i = 0; i < oscillators.length; i++) {
+        if (i < peaks.length) {
+            let peak = peaks[i];
+            let freq = peak.frequency;
+            let amplitude = map(peak.amplitude, 0, 255, 0, outputVolume);
+
+            oscillators[i].freq(freq, 0.1); // Smooth frequency transition
+            oscillators[i].amp(amplitude, 0.1); // Smooth amplitude transition
+        } else {
+            oscillators[i].amp(0, 0.05); // Fade out unused oscillators
+        }
+    }
+}
+
+function findFrequencyPeaks(spectrum, numPeaks) {
+    let peaks = [];
+    let sampleRate = 44100; // Standard sample rate
+    let nyquist = sampleRate / 2;
+
+    // Find local maxima in the spectrum
+    for (let i = 2; i < spectrum.length / 2 - 2; i++) {
+        let val = spectrum[i];
+
+        // Check if this is a local maximum and above threshold
+        if (val > 20 && // Minimum amplitude threshold
+            val > spectrum[i - 1] &&
+            val > spectrum[i - 2] &&
+            val > spectrum[i + 1] &&
+            val > spectrum[i + 2]) {
+
+            // Calculate frequency in Hz
+            let freq = (i * nyquist) / (spectrum.length / 2);
+
+            // Limit to audible range (20 Hz - 4000 Hz for stethoscope)
+            if (freq >= 20 && freq <= 4000) {
+                peaks.push({
+                    frequency: freq,
+                    amplitude: val,
+                    index: i
+                });
+            }
+        }
+    }
+
+    // Sort by amplitude (loudest first)
+    peaks.sort((a, b) => b.amplitude - a.amplitude);
+
+    // Return top N peaks
+    return peaks.slice(0, numPeaks);
+}
+
 function draw() {
     background(0);
 
@@ -168,6 +280,16 @@ function draw() {
 
     // Apply noise gate - only visualize if above threshold
     let isAboveThreshold = smoothedLevel > noiseThreshold;
+
+    // Update sound output based on spectrum
+    if (isAboveThreshold) {
+        updateSoundOutput(spectrum);
+    } else if (soundEnabled) {
+        // Fade out all oscillators when below threshold
+        for (let osc of oscillators) {
+            osc.amp(0, 0.1);
+        }
+    }
 
     // Log audio level for debugging (only occasionally to avoid console spam)
     if (frameCount % 60 === 0) {
