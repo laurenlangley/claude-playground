@@ -8,6 +8,12 @@ let audioStarted = false;
 let statusMessage = "Initializing...";
 let workletError = false;
 
+// Noise gate parameters
+let noiseThreshold = 0.01; // Adjust this to filter out ambient noise (0.0 - 1.0)
+let smoothedLevel = 0;
+let thresholdSlider;
+let showControls = true;
+
 // Catch worklet loading errors
 window.addEventListener('unhandledrejection', function(event) {
     if (event.reason && event.reason.message &&
@@ -50,6 +56,16 @@ function setup() {
 
     statusMessage = "Ready - Click button to start";
     console.log("Setup complete - waiting for user interaction");
+
+    // Create noise threshold slider
+    createP('Noise Gate Threshold:').position(10, height + 10).style('color', 'white');
+    thresholdSlider = createSlider(0, 0.5, noiseThreshold, 0.001);
+    thresholdSlider.position(10, height + 40);
+    thresholdSlider.style('width', '300px');
+    thresholdSlider.input(() => {
+        noiseThreshold = thresholdSlider.value();
+        console.log("Noise threshold set to:", noiseThreshold);
+    });
 
     // Set up button interaction - try multiple methods
     let startButton = select('#startButton');
@@ -146,69 +162,113 @@ function draw() {
     // Get frequency spectrum
     let spectrum = fft.analyze();
 
+    // Get current audio level and smooth it
+    let currentLevel = mic.getLevel();
+    smoothedLevel = smoothedLevel * 0.9 + currentLevel * 0.1; // Exponential smoothing
+
+    // Apply noise gate - only visualize if above threshold
+    let isAboveThreshold = smoothedLevel > noiseThreshold;
+
     // Log audio level for debugging (only occasionally to avoid console spam)
     if (frameCount % 60 === 0) {
-        let level = mic.getLevel();
-        console.log("Audio level:", level, "Spectrum max:", max(spectrum));
+        console.log("Audio level:", smoothedLevel.toFixed(4), "Threshold:", noiseThreshold.toFixed(4), "Active:", isAboveThreshold);
     }
 
-    // Draw colored frequency bars
-    colorMode(HSB);
-    stroke(hVal, 255, 255);
-    colorMode(RGB);
+    // Only draw visualization if above threshold
+    if (isAboveThreshold) {
+        // Draw colored frequency bars
+        colorMode(HSB);
+        stroke(hVal, 255, 255);
+        colorMode(RGB);
 
-    // Use logarithmic averaging to group frequencies
-    let numBands = 63;
-    for (let i = 0; i < numBands; i++) {
-        // Map bands logarithmically across the spectrum
-        let start = int(map(i, 0, numBands, 0, spectrum.length / 2, true));
-        let end = int(map(i + 1, 0, numBands, 0, spectrum.length / 2, true));
+        // Use logarithmic averaging to group frequencies
+        let numBands = 63;
+        for (let i = 0; i < numBands; i++) {
+            // Map bands logarithmically across the spectrum
+            let start = int(map(i, 0, numBands, 0, spectrum.length / 2, true));
+            let end = int(map(i + 1, 0, numBands, 0, spectrum.length / 2, true));
 
-        // Average the frequencies in this band
-        let sum = 0;
-        let count = 0;
-        for (let j = start; j < end; j++) {
-            sum += spectrum[j];
-            count++;
+            // Average the frequencies in this band
+            let sum = 0;
+            let count = 0;
+            for (let j = start; j < end; j++) {
+                sum += spectrum[j];
+                count++;
+            }
+            let avg = count > 0 ? sum / count : 0;
+
+            // Scale the amplitude
+            let h = map(avg, 0, 255, 0, height);
+
+            // Draw the line
+            line((i * w) + (w / 2), height, (i * w) + (w / 2), height - h * 0.8);
         }
-        let avg = count > 0 ? sum / count : 0;
 
-        // Scale the amplitude
-        let h = map(avg, 0, 255, 0, height);
+        // Capture current frame for fade effect
+        fade = get();
 
-        // Draw the line
-        line((i * w) + (w / 2), height, (i * w) + (w / 2), height - h * 0.8);
-    }
+        // Draw white frequency bars on top
+        stroke(255);
+        for (let i = 0; i < numBands; i++) {
+            let start = int(map(i, 0, numBands, 0, spectrum.length / 2, true));
+            let end = int(map(i + 1, 0, numBands, 0, spectrum.length / 2, true));
 
-    // Capture current frame for fade effect
-    fade = get();
+            let sum = 0;
+            let count = 0;
+            for (let j = start; j < end; j++) {
+                sum += spectrum[j];
+                count++;
+            }
+            let avg = count > 0 ? sum / count : 0;
+            let h = map(avg, 0, 255, 0, height);
 
-    // Draw white frequency bars on top
-    stroke(255);
-    for (let i = 0; i < numBands; i++) {
-        let start = int(map(i, 0, numBands, 0, spectrum.length / 2, true));
-        let end = int(map(i + 1, 0, numBands, 0, spectrum.length / 2, true));
-
-        let sum = 0;
-        let count = 0;
-        for (let j = start; j < end; j++) {
-            sum += spectrum[j];
-            count++;
+            line((i * w) + (w / 2), height, (i * w) + (w / 2), height - h * 0.8);
         }
-        let avg = count > 0 ? sum / count : 0;
-        let h = map(avg, 0, 255, 0, height);
 
-        line((i * w) + (w / 2), height, (i * w) + (w / 2), height - h * 0.8);
+        // Increment hue value for color cycling
+        hVal += 2;
+        if (hVal > 255) {
+            hVal = 0;
+        }
     }
 
-    // Draw status indicator in corner
-    fill(0, 255, 0);
+    // Draw status indicator and level meter
     noStroke();
-    ellipse(20, 20, 10, 10); // Green indicator when running
 
-    // Increment hue value for color cycling
-    hVal += 2;
-    if (hVal > 255) {
-        hVal = 0;
+    // Status dot: Green when gate open (above threshold), red when closed
+    if (isAboveThreshold) {
+        fill(0, 255, 0); // Green
+    } else {
+        fill(255, 0, 0); // Red
     }
+    ellipse(20, 20, 10, 10);
+
+    // Audio level meter (right side)
+    let meterX = width - 30;
+    let meterY = 50;
+    let meterWidth = 15;
+    let meterHeight = height - 100;
+
+    // Meter background
+    fill(40);
+    rect(meterX, meterY, meterWidth, meterHeight);
+
+    // Current level bar
+    let levelHeight = map(smoothedLevel, 0, 0.5, 0, meterHeight);
+    fill(0, 255, 0);
+    rect(meterX, meterY + meterHeight - levelHeight, meterWidth, levelHeight);
+
+    // Threshold line
+    let thresholdY = meterY + meterHeight - map(noiseThreshold, 0, 0.5, 0, meterHeight);
+    stroke(255, 255, 0);
+    strokeWeight(2);
+    line(meterX - 5, thresholdY, meterX + meterWidth + 5, thresholdY);
+
+    // Labels
+    noStroke();
+    fill(255);
+    textSize(10);
+    textAlign(RIGHT);
+    text("Level", meterX - 10, meterY - 5);
+    text(smoothedLevel.toFixed(3), meterX - 10, meterY + meterHeight + 15);
 }
