@@ -6,6 +6,28 @@ This repository is used for testing and experimenting with Claude Code features.
 
 ## Processing Audio Visualizer Debug
 
+### Prerequisites: Install Minim Library
+
+**IMPORTANT:** Before running any of these sketches, you must install the Minim audio library in Processing.
+
+#### Installation Steps:
+1. Open Processing IDE
+2. Go to **Sketch → Import Library → Add Library...**
+3. Search for **"Minim"**
+4. Click on **Minim by Damien Di Fede**
+5. Click **Install**
+
+#### Verify Installation:
+- Run `test_minim.pde` to verify Minim is working
+- Or check: **Sketch → Import Library** - you should see Minim listed
+
+#### Common Error Without Minim:
+```
+The package "ddf.minim" does not exist. You might be missing a library.
+```
+
+If you see this error, Minim is not installed.
+
 ### Issues Found
 
 #### 1. **Double Drawing Bug** (MAJOR)
@@ -74,5 +96,6 @@ float barHeight = fft.getAvg(i) * 20;  // Try 10, 20, or higher instead of 4
 ```
 
 ### Files
+- `test_minim.pde` - Test sketch to verify Minim library is installed
 - `audio_visualizer.pde` - Original code with issues
 - `audio_visualizer_fixed.pde` - Fixed version with debugging
