@@ -17,8 +17,8 @@ void setup()
 
   minim = new Minim(this);
 
-  // Try to get audio input - this is where it often fails
-  in = minim.getLineIn(Minim.STEREO, 512);
+  // Try to get audio input - use MONO for better compatibility (especially on macOS)
+  in = minim.getLineIn(Minim.MONO, 512);
 
   // Debug: Print audio input info
   println("Audio input created");
