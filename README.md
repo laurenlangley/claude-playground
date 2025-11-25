@@ -98,6 +98,22 @@ Max FFT average: [number]
 
 If audio level stays at 0.0, your microphone isn't being detected.
 
+### ⚠️ Audio Level is 0.0? (Microphone Not Detected)
+
+**If you see audio level staying at 0.0, run the diagnostics tool:**
+
+1. Open **`audio_diagnostics/audio_diagnostics.pde`**
+2. Check the console output for available audio devices
+3. Follow the on-screen troubleshooting steps
+
+**See [AUDIO_TROUBLESHOOTING.md](AUDIO_TROUBLESHOOTING.md) for detailed platform-specific fixes**
+
+Common quick fixes:
+- **macOS**: Grant microphone permission in System Preferences → Security & Privacy → Microphone
+- **Linux**: Ensure you're in the `audio` group and PulseAudio is configured
+- **Windows**: Check Sound settings → Recording → Enable microphone
+- **All platforms**: Verify microphone works in other apps first
+
 **Step 3: Verify Audio Input**
 1. Check you see the green dot (top-left corner) - confirms sketch is running
 2. Make noise near your microphone
@@ -112,6 +128,10 @@ float barHeight = fft.getAvg(i) * 20;  // Try 10, 20, or higher instead of 4
 ```
 
 ### Sketches
+- **`audio_diagnostics/`** - **START HERE if audio level is 0.0** - Comprehensive audio troubleshooting tool
 - **`test_minim/`** - Test sketch to verify Minim library is installed
 - **`audio_visualizer/`** - Original code with issues
 - **`audio_visualizer_fixed/`** - Fixed version with debugging (use this one!)
+
+### Documentation
+- **`AUDIO_TROUBLESHOOTING.md`** - Detailed platform-specific audio troubleshooting guide
