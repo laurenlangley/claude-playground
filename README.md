@@ -6,6 +6,22 @@ This repository is used for testing and experimenting with Claude Code features.
 
 ## Processing Audio Visualizer Debug
 
+### Processing Sketch Folder Structure
+
+**IMPORTANT:** Each Processing sketch must be in its own folder with a matching name:
+```
+test_minim/
+  └── test_minim.pde
+audio_visualizer/
+  └── audio_visualizer.pde
+audio_visualizer_fixed/
+  └── audio_visualizer_fixed.pde
+```
+
+To open a sketch in Processing:
+- **File → Open** and navigate to the sketch folder
+- Or double-click the `.pde` file and Processing will open it correctly
+
 ### Prerequisites: Install Minim Library
 
 **IMPORTANT:** Before running any of these sketches, you must install the Minim audio library in Processing.
@@ -95,7 +111,7 @@ If you see small numbers in the console but no bars, increase the multiplier in 
 float barHeight = fft.getAvg(i) * 20;  // Try 10, 20, or higher instead of 4
 ```
 
-### Files
-- `test_minim.pde` - Test sketch to verify Minim library is installed
-- `audio_visualizer.pde` - Original code with issues
-- `audio_visualizer_fixed.pde` - Fixed version with debugging
+### Sketches
+- **`test_minim/`** - Test sketch to verify Minim library is installed
+- **`audio_visualizer/`** - Original code with issues
+- **`audio_visualizer_fixed/`** - Fixed version with debugging (use this one!)
