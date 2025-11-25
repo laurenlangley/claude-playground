@@ -1,15 +1,15 @@
 // Minimal test to verify Minim is installed
 import ddf.minim.*;
 
-Minim minim;
+Minim audioContext;
 
 void setup() {
   size(400, 200);
 
   try {
-    minim = new Minim(this);
+    audioContext = new Minim(this);
     println("SUCCESS: Minim library loaded!");
-    println("Minim version: " + minim.getClass().getPackage().getImplementationVersion());
+    println("Minim version: " + audioContext.getClass().getPackage().getImplementationVersion());
   } catch (Exception e) {
     println("ERROR: Minim failed to load");
     println(e.getMessage());
@@ -22,7 +22,7 @@ void draw() {
   textAlign(CENTER, CENTER);
   textSize(20);
 
-  if (minim != null) {
+  if (audioContext != null) {
     text("✓ Minim is working!", width/2, height/2);
   } else {
     fill(255, 0, 0);
@@ -31,8 +31,8 @@ void draw() {
 }
 
 void stop() {
-  if (minim != null) {
-    minim.stop();
+  if (audioContext != null) {
+    audioContext.stop();
   }
   super.stop();
 }
