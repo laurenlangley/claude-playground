@@ -21,18 +21,6 @@ void setup() {
     println("✓ Minim library loaded successfully");
     println();
 
-    // List available audio mixers (devices)
-    println("Available audio mixers:");
-    String[] mixers = minim.listMixers();
-    if (mixers.length == 0) {
-      println("  WARNING: No audio mixers found!");
-    } else {
-      for (int i = 0; i < mixers.length; i++) {
-        println("  " + i + ": " + mixers[i]);
-      }
-    }
-    println();
-
     // Try to get audio input - MONO first (more compatible)
     println("Attempting to get audio input (MONO, 512 buffer)...");
     try {
