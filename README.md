@@ -3,3 +3,76 @@
 An experimental project to try out Claude Code.
 
 This repository is used for testing and experimenting with Claude Code features.
+
+## Processing Audio Visualizer Debug
+
+### Issues Found
+
+#### 1. **Double Drawing Bug** (MAJOR)
+The original code draws the frequency bars twice:
+- First with colored stroke (HSB mode)
+- Then immediately with white stroke at the EXACT same positions
+
+This means the colored visualization is completely hidden by white lines. This is likely why you're not seeing any color variation.
+
+#### 2. **Audio Input Detection**
+The code may fail to detect audio for several reasons:
+
+**Permission Issues:**
+- **macOS**: Processing needs microphone permission (System Preferences > Security & Privacy > Microphone)
+- **Linux**: Check PulseAudio/ALSA settings
+- **Windows**: Usually works by default
+
+**Audio Device Issues:**
+- No microphone connected
+- Wrong default input device selected
+- Microphone muted or volume too low
+
+#### 3. **Low Audio Levels**
+Even if audio is detected, very quiet input will produce bars too small to see (multiplied by only 4).
+
+### How to Debug
+
+**Step 1: Run the Fixed Version**
+
+Use `audio_visualizer_fixed.pde` which includes:
+- Debug console output showing audio levels
+- Removed the duplicate white line drawing
+- Green indicator dot to confirm sketch is running
+- Proper cleanup on exit
+
+**Step 2: Check Console Output**
+
+When you run it, the console should show:
+```
+Audio input created
+Buffer size: 512
+Sample rate: 44100.0
+FFT avg size: [number]
+Bar width: [number]
+```
+
+Every second you should see:
+```
+Audio level: [number]
+Max FFT average: [number]
+```
+
+If audio level stays at 0.0, your microphone isn't being detected.
+
+**Step 3: Verify Audio Input**
+1. Check you see the green dot (top-left corner) - confirms sketch is running
+2. Make noise near your microphone
+3. Watch the console - audio level should change from 0.0
+4. Look for colored bars - they should appear from the bottom
+
+**Step 4: Increase Sensitivity (if needed)**
+
+If you see small numbers in the console but no bars, increase the multiplier in line 50:
+```processing
+float barHeight = fft.getAvg(i) * 20;  // Try 10, 20, or higher instead of 4
+```
+
+### Files
+- `audio_visualizer.pde` - Original code with issues
+- `audio_visualizer_fixed.pde` - Fixed version with debugging
