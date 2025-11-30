@@ -1,5 +1,6 @@
 import ddf.minim.analysis.*;
 import ddf.minim.*;
+import ddf.minim.spi.*;
 
 Minim minim;
 AudioInput in;
@@ -12,6 +13,32 @@ int hVal;
 
 float rWidth, rHeight;
 boolean monitoring = false; // Toggle audio playback
+MonitorSignal monitorSignal;
+
+// AudioSignal that passes through input to output
+class MonitorSignal implements AudioSignal {
+  void generate(float[] samp) {
+    for (int i = 0; i < samp.length; i++) {
+      if (monitoring && in != null && i < in.left.size()) {
+        samp[i] = in.left.get(i);
+      } else {
+        samp[i] = 0;
+      }
+    }
+  }
+
+  void generate(float[] sampL, float[] sampR) {
+    for (int i = 0; i < sampL.length; i++) {
+      if (monitoring && in != null && i < in.left.size()) {
+        sampL[i] = in.left.get(i);
+        sampR[i] = in.left.get(i); // Copy left to right (mono)
+      } else {
+        sampL[i] = 0;
+        sampR[i] = 0;
+      }
+    }
+  }
+}
 
 void setup()
 {
@@ -24,6 +51,10 @@ void setup()
 
   // Get audio output for monitoring
   out = minim.getLineOut(Minim.MONO, 512);
+
+  // Create and add the monitoring signal
+  monitorSignal = new MonitorSignal();
+  out.addSignal(monitorSignal);
 
   // Debug: Print audio input info
   println("Audio input created");
@@ -65,14 +96,6 @@ void draw()
   tint(255, 255, 255, 254);
   image(fade, (width - rWidth) / 2, (height - rHeight) / 2, rWidth, rHeight);
   noTint();
-
-  // If monitoring is enabled, copy input to output
-  if (monitoring) {
-    for (int i = 0; i < out.bufferSize(); i++) {
-      out.left.set(i, in.left.get(i));
-      out.right.set(i, in.left.get(i)); // Use left for both channels since input is MONO
-    }
-  }
 
   // Perform FFT analysis
   fft.forward(in.mix);
