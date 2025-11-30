@@ -3,6 +3,7 @@ import ddf.minim.*;
 
 Minim minim;
 AudioInput in;
+AudioOutput out;
 FFT fft;
 int w;
 PImage fade;
@@ -10,6 +11,7 @@ PImage fade;
 int hVal;
 
 float rWidth, rHeight;
+boolean monitoring = false; // Toggle audio playback
 
 void setup()
 {
@@ -20,10 +22,20 @@ void setup()
   // Try to get audio input - use MONO for better compatibility (especially on macOS)
   in = minim.getLineIn(Minim.MONO, 512);
 
+  // Get audio output for monitoring
+  out = minim.getLineOut(Minim.MONO, 512);
+
   // Debug: Print audio input info
   println("Audio input created");
   println("Buffer size: " + in.bufferSize());
   println("Sample rate: " + in.sampleRate());
+  println();
+  println("=== AUDIO MONITORING ===");
+  println("Press 'M' to toggle audio monitoring (playback)");
+  println("WARNING: If using speakers + microphone, this may cause feedback!");
+  println("Use headphones to avoid feedback loop.");
+  println("Monitoring is currently: OFF");
+  println();
 
   fft = new FFT(in.bufferSize(), in.sampleRate());
   fft.logAverages(60, 7);
@@ -53,6 +65,14 @@ void draw()
   tint(255, 255, 255, 254);
   image(fade, (width - rWidth) / 2, (height - rHeight) / 2, rWidth, rHeight);
   noTint();
+
+  // If monitoring is enabled, copy input to output
+  if (monitoring) {
+    for (int i = 0; i < out.bufferSize(); i++) {
+      out.left.set(i, in.left.get(i));
+      out.right.set(i, in.left.get(i)); // Use left for both channels since input is MONO
+    }
+  }
 
   // Perform FFT analysis
   fft.forward(in.mix);
@@ -91,10 +111,26 @@ void draw()
   }
   */
 
-  // Draw a simple indicator that the sketch is running
-  fill(0, 255, 0);
+  // Draw status indicators
   noStroke();
+
+  // Green dot: sketch is running
+  fill(0, 255, 0);
   ellipse(10, 10, 10, 10);
+
+  // Monitoring indicator (red = off, green = on)
+  if (monitoring) {
+    fill(0, 255, 0);
+  } else {
+    fill(255, 0, 0);
+  }
+  ellipse(30, 10, 10, 10);
+
+  // Text label for monitoring
+  fill(255);
+  textSize(12);
+  text("Monitoring: " + (monitoring ? "ON" : "OFF"), 45, 15);
+  text("Press 'M' to toggle", 45, 30);
 
   // Update hue value
   hVal += 2;
@@ -104,10 +140,23 @@ void draw()
   }
 }
 
+// Toggle audio monitoring with 'M' key
+void keyPressed() {
+  if (key == 'm' || key == 'M') {
+    monitoring = !monitoring;
+    println("Audio monitoring: " + (monitoring ? "ON" : "OFF"));
+
+    if (monitoring) {
+      println("WARNING: Feedback may occur if using speakers!");
+    }
+  }
+}
+
 // Clean up audio on exit
 void stop()
 {
   in.close();
+  out.close();
   minim.stop();
   super.stop();
 }
