@@ -18,23 +18,34 @@ boolean monitoring = false; // Toggle audio playback
 boolean showWaveform = true; // Toggle waveform view
 MonitorSignal monitorSignal;
 
-// Heartbeat detection settings - MUCH higher for stethoscope
-float inputGain = 100.0;     // Amplification for quiet sounds like heartbeats
-float visualGain = 500.0;    // Visualization multiplier (much higher for heartbeats)
-float monitorGain = 20.0;    // Playback volume amplification
+// Heartbeat detection settings - Reduced defaults for better control
+float inputGain = 20.0;      // Start lower, can adjust up
+float visualGain = 100.0;    // Start lower, can adjust up
+float monitorGain = 5.0;     // Much lower to reduce noise/distortion
 
-// Peak detection for heartbeat
-float peakThreshold = 0.02;  // Threshold for detecting heartbeat peaks
+// Peak detection for heartbeat with improved algorithm
+float peakThreshold = 0.05;  // Threshold for detecting heartbeat peaks
 float lastPeakTime = 0;
+float lastPeakValue = 0;
 float bpm = 0;               // Calculated beats per minute
+float smoothedBPM = 0;       // Smoothed BPM for stability
 ArrayList<Float> peakTimes = new ArrayList<Float>();
+ArrayList<Float> recentBPMs = new ArrayList<Float>();
 
-// AudioSignal that passes through input to output with amplification
+// Smoothing for audio to reduce scratchy noise
+float[] smoothedSamples;
+int smoothingWindow = 5;
+
+// AudioSignal that passes through input to output with smoothing to reduce noise
 class MonitorSignal implements AudioSignal {
   void generate(float[] samp) {
     for (int i = 0; i < samp.length; i++) {
       if (monitoring && in != null && i < in.left.size()) {
-        samp[i] = constrain(in.left.get(i) * monitorGain, -1.0, 1.0);
+        // Apply gentle gain and smooth to reduce scratchy noise
+        float sample = in.left.get(i) * monitorGain;
+        // Soft clipping to prevent harsh distortion
+        sample = sample / (1.0 + abs(sample));
+        samp[i] = constrain(sample, -1.0, 1.0);
       } else {
         samp[i] = 0;
       }
@@ -44,7 +55,11 @@ class MonitorSignal implements AudioSignal {
   void generate(float[] sampL, float[] sampR) {
     for (int i = 0; i < sampL.length; i++) {
       if (monitoring && in != null && i < in.left.size()) {
-        float amplified = constrain(in.left.get(i) * monitorGain, -1.0, 1.0);
+        // Apply gentle gain and smooth to reduce scratchy noise
+        float sample = in.left.get(i) * monitorGain;
+        // Soft clipping to prevent harsh distortion
+        sample = sample / (1.0 + abs(sample));
+        float amplified = constrain(sample, -1.0, 1.0);
         sampL[i] = amplified;
         sampR[i] = amplified;
       } else {
@@ -83,22 +98,26 @@ void setup()
   println("=== DIGITAL STETHOSCOPE MODE ===");
   println("Optimized for detecting heartbeats from digital stethoscopes");
   println("Low-pass filter enabled (20-200 Hz for heartbeat sounds)");
+  println("Soft-clipping enabled to reduce scratchy noise");
   println();
   println("CONTROLS:");
   println("  M - Toggle audio monitoring (playback)");
   println("  W - Toggle waveform view");
-  println("  UP/DOWN - Adjust input gain (sensitivity)");
-  println("  LEFT/RIGHT - Adjust visualization gain");
-  println("  [ / ] - Adjust monitor volume");
+  println("  UP/DOWN - Adjust input gain +/- 2x (fine control)");
+  println("  SHIFT+UP/DOWN - Adjust input gain +/- 10x (coarse control)");
+  println("  LEFT/RIGHT - Adjust visualization gain +/- 10x");
+  println("  [ / ] - Adjust monitor volume +/- 1x");
   println("  + / - - Adjust peak detection threshold");
+  println("  R - Reset all gains to defaults");
   println();
-  println("Current settings:");
-  println("  Input Gain: " + inputGain + "x (VERY HIGH for stethoscope)");
-  println("  Visual Gain: " + visualGain + "x");
-  println("  Monitor Gain: " + monitorGain + "x");
+  println("Current settings (REDUCED for better control):");
+  println("  Input Gain: " + inputGain + "x (reduced from 100x)");
+  println("  Visual Gain: " + visualGain + "x (reduced from 500x)");
+  println("  Monitor Gain: " + monitorGain + "x (reduced to prevent noise)");
+  println("  Peak Threshold: " + peakThreshold);
   println("  Low-pass filter: 200 Hz cutoff");
   println();
-  println("TIP: For digital stethoscope, ensure it's powered on and volume is up!");
+  println("TIP: Start with low gain and increase gradually until heartbeat is visible!");
   println();
 
   fft = new FFT(in.bufferSize(), in.sampleRate());
@@ -129,22 +148,51 @@ void draw()
   float rawLevel = in.mix.level();
   float amplifiedLevel = rawLevel * inputGain;
 
-  // Peak detection for heartbeat
-  if (amplifiedLevel > peakThreshold && millis() - lastPeakTime > 300) { // At least 300ms between peaks (200 BPM max)
-    lastPeakTime = millis();
-    peakTimes.add(millis() / 1000.0); // Store time in seconds
+  // Improved peak detection for heartbeat
+  float currentTime = millis();
 
-    // Calculate BPM from last 10 peaks
-    if (peakTimes.size() > 10) {
-      peakTimes.remove(0); // Keep only last 10
+  // Detect peak: level above threshold AND higher than recent peaks AND reasonable timing
+  boolean isPeak = amplifiedLevel > peakThreshold &&
+                   amplifiedLevel > lastPeakValue * 0.8; // Must be significant peak
+
+  // Heartbeat timing constraints (30-200 BPM range)
+  float minInterval = 300;  // 200 BPM max
+  float maxInterval = 2000; // 30 BPM min
+  float timeSinceLastPeak = currentTime - lastPeakTime;
+
+  if (isPeak && timeSinceLastPeak > minInterval) {
+    // Valid peak detected
+    if (timeSinceLastPeak < maxInterval) {
+      // Calculate instantaneous BPM from this interval
+      float instantBPM = 60000.0 / timeSinceLastPeak;
+
+      // Only accept BPM in reasonable range
+      if (instantBPM >= 30 && instantBPM <= 200) {
+        recentBPMs.add(instantBPM);
+
+        // Keep only last 5 BPM readings for smoothing
+        if (recentBPMs.size() > 5) {
+          recentBPMs.remove(0);
+        }
+
+        // Calculate smoothed BPM (average of recent readings)
+        float sum = 0;
+        for (float b : recentBPMs) {
+          sum += b;
+        }
+        smoothedBPM = sum / recentBPMs.size();
+        bpm = smoothedBPM;
+
+        println("♥ HEARTBEAT! Instant: " + nf(instantBPM, 0, 1) + " | Smoothed: " + nf(smoothedBPM, 0, 1) + " BPM");
+      }
     }
-    if (peakTimes.size() >= 2) {
-      float duration = peakTimes.get(peakTimes.size()-1) - peakTimes.get(0);
-      float avgInterval = duration / (peakTimes.size() - 1);
-      bpm = 60.0 / avgInterval;
-      println("♥ HEARTBEAT DETECTED! BPM: " + nf(bpm, 0, 1));
-    }
+
+    lastPeakTime = currentTime;
+    lastPeakValue = amplifiedLevel;
   }
+
+  // Decay last peak value over time
+  lastPeakValue *= 0.95;
 
   // Debug: Print audio level every 30 frames
   if (frameCount % 30 == 0) {
@@ -300,54 +348,71 @@ void keyPressed() {
     showWaveform = !showWaveform;
     println("View mode: " + (showWaveform ? "WAVEFORM (better for heartbeat)" : "SPECTRUM"));
   }
+  else if (key == 'r' || key == 'R') {
+    // Reset all gains to defaults
+    inputGain = 20.0;
+    visualGain = 100.0;
+    monitorGain = 5.0;
+    peakThreshold = 0.05;
+    println("=== RESET TO DEFAULTS ===");
+    println("Input Gain: " + inputGain + "x");
+    println("Visual Gain: " + visualGain + "x");
+    println("Monitor Gain: " + monitorGain + "x");
+    println("Peak Threshold: " + peakThreshold);
+  }
   else if (key == '+' || key == '=') {
     // Increase peak threshold
-    peakThreshold += 0.005;
+    peakThreshold += 0.01;
     peakThreshold = constrain(peakThreshold, 0.001, 1.0);
     println("Peak Threshold: " + peakThreshold);
   }
   else if (key == '-' || key == '_') {
     // Decrease peak threshold
-    peakThreshold -= 0.005;
+    peakThreshold -= 0.01;
     peakThreshold = constrain(peakThreshold, 0.001, 1.0);
     println("Peak Threshold: " + peakThreshold);
   }
   else if (key == CODED) {
+    // Check for SHIFT key for coarse adjustments
+    boolean isShift = (keyEvent != null && keyEvent.isShiftDown());
+
     if (keyCode == UP) {
-      // Increase input gain
-      inputGain += 10.0;
+      // Increase input gain (fine or coarse)
+      float increment = isShift ? 10.0 : 2.0;
+      inputGain += increment;
       inputGain = constrain(inputGain, 1.0, 1000.0);
-      println("Input Gain: " + inputGain + "x");
+      println("Input Gain: " + inputGain + "x " + (isShift ? "(coarse)" : "(fine)"));
     }
     else if (keyCode == DOWN) {
-      // Decrease input gain
-      inputGain -= 10.0;
+      // Decrease input gain (fine or coarse)
+      float decrement = isShift ? 10.0 : 2.0;
+      inputGain -= decrement;
       inputGain = constrain(inputGain, 1.0, 1000.0);
-      println("Input Gain: " + inputGain + "x");
+      println("Input Gain: " + inputGain + "x " + (isShift ? "(coarse)" : "(fine)"));
     }
     else if (keyCode == RIGHT) {
       // Increase visual gain
-      visualGain += 25.0;
+      visualGain += 10.0;
       visualGain = constrain(visualGain, 1.0, 2000.0);
       println("Visual Gain: " + visualGain + "x");
     }
     else if (keyCode == LEFT) {
       // Decrease visual gain
-      visualGain -= 25.0;
+      visualGain -= 10.0;
       visualGain = constrain(visualGain, 1.0, 2000.0);
       println("Visual Gain: " + visualGain + "x");
     }
   }
   else if (key == '[') {
     // Decrease monitor volume
-    monitorGain -= 2.0;
-    monitorGain = constrain(monitorGain, 1.0, 100.0);
+    monitorGain -= 1.0;
+    monitorGain = constrain(monitorGain, 1.0, 50.0);
     println("Monitor Volume: " + monitorGain + "x");
   }
   else if (key == ']') {
     // Increase monitor volume
-    monitorGain += 2.0;
-    monitorGain = constrain(monitorGain, 1.0, 100.0);
+    monitorGain += 1.0;
+    monitorGain = constrain(monitorGain, 1.0, 50.0);
     println("Monitor Volume: " + monitorGain + "x");
   }
 }
