@@ -7,21 +7,23 @@ Minim minim;
 AudioInput in;
 AudioOutput out;
 FFT fft;
-LowPassSP lowPass; // Filter for heartbeat frequencies
+LowPassSP lowPass;   // Filter for heartbeat frequencies
+HighPassSP highPass; // Filter to remove rumble/DC offset
 int w;
 PImage fade;
 
 int hVal;
 
 float rWidth, rHeight;
-boolean monitoring = false; // Toggle audio playback
-boolean showWaveform = true; // Toggle waveform view
+boolean monitoring = false;     // Toggle audio playback
+boolean showWaveform = true;    // Toggle waveform view
+boolean filterEnabled = true;   // Toggle low-pass filter (can cause crackling)
 MonitorSignal monitorSignal;
 
 // Heartbeat detection settings - Reduced defaults for better control
 float inputGain = 20.0;      // Start lower, can adjust up
 float visualGain = 100.0;    // Start lower, can adjust up
-float monitorGain = 5.0;     // Much lower to reduce noise/distortion
+float monitorGain = 2.0;     // VERY low to minimize noise
 
 // Peak detection for heartbeat with improved algorithm
 float peakThreshold = 0.05;  // Threshold for detecting heartbeat peaks
@@ -32,22 +34,27 @@ float smoothedBPM = 0;       // Smoothed BPM for stability
 ArrayList<Float> peakTimes = new ArrayList<Float>();
 ArrayList<Float> recentBPMs = new ArrayList<Float>();
 
-// Smoothing for audio to reduce scratchy noise
-float[] smoothedSamples;
-int smoothingWindow = 5;
+// Better smoothing for audio to eliminate crackling
+float lastOutputSample = 0;
+float smoothingFactor = 0.3; // Lower = smoother but more latency
 
-// AudioSignal that passes through input to output with smoothing to reduce noise
+// AudioSignal with aggressive noise reduction
 class MonitorSignal implements AudioSignal {
   void generate(float[] samp) {
     for (int i = 0; i < samp.length; i++) {
       if (monitoring && in != null && i < in.left.size()) {
-        // Apply gentle gain and smooth to reduce scratchy noise
+        // Get input sample
         float sample = in.left.get(i) * monitorGain;
-        // Soft clipping to prevent harsh distortion
-        sample = sample / (1.0 + abs(sample));
-        samp[i] = constrain(sample, -1.0, 1.0);
+
+        // Exponential smoothing to reduce crackling
+        lastOutputSample = lastOutputSample * (1.0 - smoothingFactor) + sample * smoothingFactor;
+
+        // Soft clipping
+        float smoothed = lastOutputSample / (1.0 + abs(lastOutputSample));
+        samp[i] = constrain(smoothed, -1.0, 1.0);
       } else {
         samp[i] = 0;
+        lastOutputSample = 0;
       }
     }
   }
@@ -55,16 +62,21 @@ class MonitorSignal implements AudioSignal {
   void generate(float[] sampL, float[] sampR) {
     for (int i = 0; i < sampL.length; i++) {
       if (monitoring && in != null && i < in.left.size()) {
-        // Apply gentle gain and smooth to reduce scratchy noise
+        // Get input sample
         float sample = in.left.get(i) * monitorGain;
-        // Soft clipping to prevent harsh distortion
-        sample = sample / (1.0 + abs(sample));
-        float amplified = constrain(sample, -1.0, 1.0);
+
+        // Exponential smoothing to reduce crackling
+        lastOutputSample = lastOutputSample * (1.0 - smoothingFactor) + sample * smoothingFactor;
+
+        // Soft clipping
+        float smoothed = lastOutputSample / (1.0 + abs(lastOutputSample));
+        float amplified = constrain(smoothed, -1.0, 1.0);
         sampL[i] = amplified;
         sampR[i] = amplified;
       } else {
         sampL[i] = 0;
         sampR[i] = 0;
+        lastOutputSample = 0;
       }
     }
   }
@@ -79,9 +91,15 @@ void setup()
   // Try to get audio input - use MONO for better compatibility (especially on macOS)
   in = minim.getLineIn(Minim.MONO, 1024); // Larger buffer for better low-frequency detection
 
-  // Add low-pass filter to focus on heartbeat frequencies (20-200 Hz range)
+  // Add high-pass filter to remove rumble and DC offset (reduces crackling)
+  highPass = new HighPassSP(20, in.sampleRate()); // Remove below 20 Hz
+  in.addEffect(highPass);
+
+  // Add low-pass filter to focus on heartbeat frequencies (can be toggled with F key)
   lowPass = new LowPassSP(200, in.sampleRate()); // Cut off above 200 Hz
-  in.addEffect(lowPass);
+  if (filterEnabled) {
+    in.addEffect(lowPass);
+  }
 
   // Get audio output for monitoring
   out = minim.getLineOut(Minim.MONO, 1024);
@@ -97,12 +115,16 @@ void setup()
   println();
   println("=== DIGITAL STETHOSCOPE MODE ===");
   println("Optimized for detecting heartbeats from digital stethoscopes");
-  println("Low-pass filter enabled (20-200 Hz for heartbeat sounds)");
-  println("Soft-clipping enabled to reduce scratchy noise");
+  println("High-pass filter: 20 Hz (removes rumble/DC offset)");
+  println("Low-pass filter: " + (filterEnabled ? "ENABLED (200 Hz)" : "DISABLED"));
+  println("Exponential smoothing: " + (smoothingFactor * 100) + "% (reduces crackling)");
   println();
   println("CONTROLS:");
   println("  M - Toggle audio monitoring (playback)");
   println("  W - Toggle waveform view");
+  println("  F - Toggle low-pass filter (try if crackling persists)");
+  println("  S - Increase smoothing (reduces noise, adds latency)");
+  println("  SHIFT+S - Decrease smoothing (less latency, more noise)");
   println("  UP/DOWN - Adjust input gain +/- 2x (fine control)");
   println("  SHIFT+UP/DOWN - Adjust input gain +/- 10x (coarse control)");
   println("  LEFT/RIGHT - Adjust visualization gain +/- 10x");
@@ -110,14 +132,17 @@ void setup()
   println("  + / - - Adjust peak detection threshold");
   println("  R - Reset all gains to defaults");
   println();
-  println("Current settings (REDUCED for better control):");
-  println("  Input Gain: " + inputGain + "x (reduced from 100x)");
-  println("  Visual Gain: " + visualGain + "x (reduced from 500x)");
-  println("  Monitor Gain: " + monitorGain + "x (reduced to prevent noise)");
+  println("Current settings (OPTIMIZED for clean audio):");
+  println("  Input Gain: " + inputGain + "x");
+  println("  Visual Gain: " + visualGain + "x");
+  println("  Monitor Gain: " + monitorGain + "x (VERY LOW to reduce noise)");
+  println("  Smoothing: " + nf(smoothingFactor, 0, 2));
   println("  Peak Threshold: " + peakThreshold);
-  println("  Low-pass filter: 200 Hz cutoff");
   println();
-  println("TIP: Start with low gain and increase gradually until heartbeat is visible!");
+  println("TIP: If crackling persists, try:");
+  println("  1. Press F to disable low-pass filter");
+  println("  2. Press S to increase smoothing");
+  println("  3. Use [ to lower monitor volume");
   println();
 
   fft = new FFT(in.bufferSize(), in.sampleRate());
@@ -348,16 +373,45 @@ void keyPressed() {
     showWaveform = !showWaveform;
     println("View mode: " + (showWaveform ? "WAVEFORM (better for heartbeat)" : "SPECTRUM"));
   }
+  else if (key == 'f' || key == 'F') {
+    // Toggle low-pass filter
+    filterEnabled = !filterEnabled;
+    if (filterEnabled) {
+      in.addEffect(lowPass);
+      println("Low-pass filter: ENABLED (200 Hz cutoff)");
+    } else {
+      in.disableEffect(lowPass);
+      println("Low-pass filter: DISABLED (may help if crackling persists)");
+    }
+  }
+  else if (key == 's' || key == 'S') {
+    // Check for SHIFT key
+    boolean isShift = (keyEvent != null && keyEvent.isShiftDown());
+    if (isShift) {
+      // Decrease smoothing (less latency, more noise)
+      smoothingFactor -= 0.05;
+      smoothingFactor = constrain(smoothingFactor, 0.05, 0.95);
+      println("Smoothing: " + nf(smoothingFactor, 0, 2) + " (decreased - less latency, more responsive)");
+    } else {
+      // Increase smoothing (reduces noise/crackling)
+      smoothingFactor += 0.05;
+      smoothingFactor = constrain(smoothingFactor, 0.05, 0.95);
+      println("Smoothing: " + nf(smoothingFactor, 0, 2) + " (increased - cleaner but more latency)");
+    }
+  }
   else if (key == 'r' || key == 'R') {
     // Reset all gains to defaults
     inputGain = 20.0;
     visualGain = 100.0;
-    monitorGain = 5.0;
+    monitorGain = 2.0;
     peakThreshold = 0.05;
+    smoothingFactor = 0.3;
+    filterEnabled = true;
     println("=== RESET TO DEFAULTS ===");
     println("Input Gain: " + inputGain + "x");
     println("Visual Gain: " + visualGain + "x");
     println("Monitor Gain: " + monitorGain + "x");
+    println("Smoothing: " + smoothingFactor);
     println("Peak Threshold: " + peakThreshold);
   }
   else if (key == '+' || key == '=') {
