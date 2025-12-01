@@ -19,15 +19,15 @@ let filterEnabled = true;
 
 // View modes
 let showWaveform = false; // Toggle between waveform and spectrum
-let monitoring = false; // Audio playback monitoring
+let monitoring = true; // Audio playback monitoring (direct passthrough)
 
 // Gain controls (from Processing code)
-let inputGain = 20.0;
-let visualGain = 100.0;
-let monitorGain = 2.0;
+let inputGain = 50.0;  // Increased default for better sensitivity
+let visualGain = 200.0; // Increased default
+let monitorGain = 5.0;  // Volume for direct audio output
 
 // Enhanced heartbeat detection with BPM
-let peakThreshold = 0.05;
+let peakThreshold = 0.02; // Lower default threshold for better detection
 let lastPeakTime = 0;
 let lastPeakValue = 0;
 let bpm = 0;
@@ -38,11 +38,6 @@ let maxBPMHistory = 5;
 // Heartbeat timing constraints (30-200 BPM)
 let minBeatInterval = 300;  // 200 BPM max
 let maxBeatInterval = 2000; // 30 BPM min
-
-// Audio monitoring
-let heartbeatOsc;
-let heartbeatEnv;
-let soundEnabled = false;
 
 // UI controls
 let inputGainSlider, visualGainSlider, thresholdSlider, volumeSlider;
@@ -173,20 +168,16 @@ function setupUI() {
     yPos += 70;
 
     // Toggle buttons
-    let soundBtn = createButton('Enable Heartbeat Sound');
-    soundBtn.position(10, yPos + 30);
-    soundBtn.mousePressed(() => {
-        soundEnabled = !soundEnabled;
-        soundBtn.html(soundEnabled ? 'Disable Heartbeat Sound' : 'Enable Heartbeat Sound');
-        if (soundEnabled) {
-            initHeartbeat();
-        } else {
-            stopHeartbeat();
-        }
+    let monitorBtn = createButton('Disable Audio Output');
+    monitorBtn.position(10, yPos + 30);
+    monitorBtn.mousePressed(() => {
+        monitoring = !monitoring;
+        monitorBtn.html(monitoring ? 'Disable Audio Output' : 'Enable Audio Output');
+        console.log("Audio monitoring:", monitoring ? "ON" : "OFF");
     });
 
     let viewBtn = createButton('Switch to Waveform');
-    viewBtn.position(200, yPos + 30);
+    viewBtn.position(190, yPos + 30);
     viewBtn.mousePressed(() => {
         showWaveform = !showWaveform;
         viewBtn.html(showWaveform ? 'Switch to Spectrum' : 'Switch to Waveform');
@@ -246,6 +237,12 @@ async function startAudio() {
                         highPass.connect(lowPass);
                         lowPass.disconnect();
                         fft.setInput(lowPass);
+                    }
+
+                    // Enable direct audio monitoring (passthrough)
+                    if (monitoring) {
+                        mic.connect();
+                        console.log("Direct audio monitoring enabled");
                     }
 
                     console.log("Ready to detect heartbeats!");
@@ -314,42 +311,6 @@ async function restartAudioWithDevice() {
     }
 }
 
-function initHeartbeat() {
-    stopHeartbeat();
-
-    heartbeatOsc = new p5.Oscillator('triangle');
-    heartbeatOsc.amp(0);
-    heartbeatOsc.freq(60);
-    heartbeatOsc.start();
-
-    heartbeatEnv = new p5.Envelope();
-    heartbeatEnv.setADSR(0.01, 0.15, 0.0, 0.1);
-    heartbeatEnv.setRange(monitorGain / 10, 0);
-
-    console.log("Heartbeat synthesizer initialized");
-}
-
-function stopHeartbeat() {
-    if (heartbeatOsc) {
-        heartbeatOsc.stop();
-        heartbeatOsc = null;
-    }
-    heartbeatEnv = null;
-}
-
-function playHeartbeat(intensity) {
-    if (!heartbeatOsc || !heartbeatEnv) return;
-
-    let volume = map(intensity, peakThreshold, 0.5, 0.2, 1.0, true);
-    volume = constrain(volume * monitorGain / 10, 0, 1.0);
-
-    let freq = map(intensity, peakThreshold, 0.5, 50, 80, true);
-    heartbeatOsc.freq(freq);
-
-    heartbeatEnv.setRange(volume, 0);
-    heartbeatEnv.play(heartbeatOsc);
-}
-
 function detectHeartbeat() {
     if (!audioStarted) return;
 
@@ -384,11 +345,6 @@ function detectHeartbeat() {
             bpm = smoothedBPM;
 
             console.log("💓 HEARTBEAT! Instant:", nf(instantBPM, 0, 1), "| Smoothed:", nf(smoothedBPM, 0, 1), "BPM");
-
-            // Play heartbeat sound
-            if (soundEnabled) {
-                playHeartbeat(amplifiedLevel);
-            }
         }
 
         lastPeakTime = currentTime;
@@ -576,13 +532,14 @@ function keyPressed() {
         console.log("Filter:", filterEnabled ? "ON" : "OFF");
     }
     else if (key === 'r' || key === 'R') {
-        inputGain = 20.0;
-        visualGain = 100.0;
-        monitorGain = 2.0;
-        peakThreshold = 0.05;
+        inputGain = 50.0;
+        visualGain = 200.0;
+        monitorGain = 5.0;
+        peakThreshold = 0.02;
         inputGainSlider.value(inputGain);
         visualGainSlider.value(visualGain);
         thresholdSlider.value(peakThreshold);
+        volumeSlider.value(monitorGain / 10);
         console.log("=== RESET TO DEFAULTS ===");
     }
 }
