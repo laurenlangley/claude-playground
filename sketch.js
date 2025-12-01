@@ -22,9 +22,9 @@ let showWaveform = false; // Toggle between waveform and spectrum
 let monitoring = true; // Audio playback monitoring (direct passthrough)
 
 // Gain controls (from Processing code)
-let inputGain = 50.0;  // Increased default for better sensitivity
-let visualGain = 200.0; // Increased default
-let monitorGain = 5.0;  // Volume for direct audio output
+let inputGain = 100.0;  // Much higher default for faint stethoscope signals
+let visualGain = 400.0; // Much higher default
+let monitorGain = 10.0;  // Higher volume for audio output
 
 // Enhanced heartbeat detection with BPM
 let peakThreshold = 0.02; // Lower default threshold for better detection
@@ -129,7 +129,7 @@ function setupUI() {
 
     // Input Gain slider
     createP('Input Gain:').position(10, yPos).style('color', 'white');
-    inputGainSlider = createSlider(1, 200, inputGain, 1);
+    inputGainSlider = createSlider(1, 500, inputGain, 1);
     inputGainSlider.position(10, yPos + 30);
     inputGainSlider.style('width', '200px');
     inputGainSlider.input(() => {
@@ -138,7 +138,7 @@ function setupUI() {
 
     // Visual Gain slider
     createP('Visual Gain:').position(220, yPos).style('color', 'white');
-    visualGainSlider = createSlider(1, 500, visualGain, 10);
+    visualGainSlider = createSlider(1, 1000, visualGain, 10);
     visualGainSlider.position(220, yPos + 30);
     visualGainSlider.style('width', '200px');
     visualGainSlider.input(() => {
@@ -173,7 +173,18 @@ function setupUI() {
     monitorBtn.mousePressed(() => {
         monitoring = !monitoring;
         monitorBtn.html(monitoring ? 'Disable Audio Output' : 'Enable Audio Output');
-        console.log("Audio monitoring:", monitoring ? "ON" : "OFF");
+
+        if (audioStarted && mic) {
+            if (monitoring) {
+                mic.connect(getAudioContext().destination);
+                console.log("🔊 Audio monitoring: ON - connected to speakers");
+            } else {
+                mic.disconnect();
+                console.log("🔇 Audio monitoring: OFF - disconnected from speakers");
+            }
+        } else {
+            console.log("Audio monitoring:", monitoring ? "ON" : "OFF", "(will apply when audio starts)");
+        }
     });
 
     let viewBtn = createButton('Switch to Waveform');
@@ -223,8 +234,17 @@ async function startAudio() {
             mic.start(
                 () => {
                     console.log("✅ Microphone started successfully");
+
+                    // Get device info
+                    let deviceName = "Unknown";
+                    if (selectedDeviceId) {
+                        let device = audioDevices.find(d => d.deviceId === selectedDeviceId);
+                        if (device) deviceName = device.label;
+                    }
+                    console.log("📱 Using device:", deviceName);
+
                     audioStarted = true;
-                    statusMessage = "Audio running";
+                    statusMessage = "Audio running: " + deviceName;
 
                     let btn = select('#startButton');
                     if (btn) btn.addClass('hidden');
@@ -239,13 +259,18 @@ async function startAudio() {
                         fft.setInput(lowPass);
                     }
 
-                    // Enable direct audio monitoring (passthrough)
+                    // Enable direct audio monitoring (passthrough to speakers)
                     if (monitoring) {
-                        mic.connect();
-                        console.log("Direct audio monitoring enabled");
+                        // Connect mic output to default audio destination (speakers)
+                        mic.connect(getAudioContext().destination);
+                        console.log("🔊 Direct audio monitoring enabled - you should hear the input");
                     }
 
                     console.log("Ready to detect heartbeats!");
+                    console.log("Current settings:");
+                    console.log("  Input Gain:", inputGain + "x");
+                    console.log("  Visual Gain:", visualGain + "x");
+                    console.log("  Peak Threshold:", peakThreshold);
                 },
                 (err) => {
                     console.error("❌ Error:", err);
@@ -465,10 +490,23 @@ function drawStatusIndicators() {
     fill(0, 255, 0);
     ellipse(10, 10, 10, 10);
 
+    // Monitoring indicator
+    if (monitoring) {
+        fill(0, 255, 0);
+    } else {
+        fill(255, 0, 0);
+    }
+    ellipse(30, 10, 10, 10);
+
     // Mode indicators
     fill(255);
     textSize(11);
-    text("View: " + (showWaveform ? "WAVEFORM" : "SPECTRUM") + " | Filter: " + (filterEnabled ? "ON" : "OFF"), 25, 15);
+    textAlign(LEFT);
+    text("View: " + (showWaveform ? "WAVEFORM" : "SPECTRUM") + " | Filter: " + (filterEnabled ? "ON" : "OFF") + " | Audio: " + (monitoring ? "ON" : "OFF"), 45, 15);
+
+    // Show current gains
+    textSize(10);
+    text("Input: " + nf(inputGain, 0, 0) + "x | Visual: " + nf(visualGain, 0, 0) + "x | Threshold: " + nf(peakThreshold, 0, 3), 45, 30);
 }
 
 function drawLevelMeter() {
@@ -532,14 +570,18 @@ function keyPressed() {
         console.log("Filter:", filterEnabled ? "ON" : "OFF");
     }
     else if (key === 'r' || key === 'R') {
-        inputGain = 50.0;
-        visualGain = 200.0;
-        monitorGain = 5.0;
+        inputGain = 100.0;
+        visualGain = 400.0;
+        monitorGain = 10.0;
         peakThreshold = 0.02;
         inputGainSlider.value(inputGain);
         visualGainSlider.value(visualGain);
         thresholdSlider.value(peakThreshold);
         volumeSlider.value(monitorGain / 10);
         console.log("=== RESET TO DEFAULTS ===");
+        console.log("Input Gain:", inputGain);
+        console.log("Visual Gain:", visualGain);
+        console.log("Monitor Gain:", monitorGain);
+        console.log("Peak Threshold:", peakThreshold);
     }
 }
