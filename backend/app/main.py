@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings
 from .database import engine, Base
-from .routers import upload
+from .routers import upload, analytics
 
 settings = get_settings()
 
@@ -27,6 +27,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(upload.router)
+app.include_router(analytics.router)
 
 
 @app.get("/")
