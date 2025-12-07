@@ -1,107 +1,197 @@
-# claude-playground
+# HealthOps - Personal Health Analytics Platform
 
-An experimental project to try out Claude Code.
+A web-based personal health application that aggregates diverse health data (PDFs, CSVs, manual logs), visualizes trends, runs statistical comparisons, and uses integrated LLM to provide personalized health insights.
 
-This repository is used for testing and experimenting with Claude Code features.
+## 🏗️ Architecture
 
-## Audio Visualization App
+- **Frontend:** Next.js 15 + TypeScript + Tailwind CSS + Recharts
+- **Backend:** FastAPI + SQLAlchemy + SQLite
+- **AI:** Anthropic Claude API for PDF lab report extraction
+- **Data Processing:** Pandas + NumPy
 
-An interactive web-based audio visualization application built with p5.js that transforms real-time audio input into dynamic FFT (Fast Fourier Transform) spectrum visualizations.
+## 🚀 Quick Start
 
-### Features
+### Prerequisites
 
-- **Real-time Audio Processing**: Captures audio from hardware devices (microphone, line-in, or specialized devices like electronically converted stethoscopes)
-- **FFT Spectrum Visualization**: Displays frequency spectrum as animated vertical bars
-- **Color Cycling**: Rainbow color effect that cycles through the HSB color spectrum
-- **Fade/Trail Effect**: Creates smooth motion trails by scaling and fading previous frames
-- **Hardware Device Support**: Compatible with any audio input device recognized by your browser
+- Node.js 18+ and npm
+- Python 3.10+
+- Anthropic API key (for PDF parsing)
 
-### Technical Details
+### Backend Setup
 
-This project converts Processing code (using Minim library) to p5.js (using p5.sound library):
+```bash
+# Navigate to backend directory
+cd backend
 
-- **Audio Input**: Uses `p5.AudioIn()` to capture audio from any connected input device
-- **FFT Analysis**: Uses `p5.FFT()` with 512 bins and logarithmic frequency averaging
-- **Visualization**: 63 frequency bands displayed as vertical bars with:
-  - Colored bars (HSB hue cycling)
-  - White bars overlaid on top
-  - 99% scaled fade effect for smooth trails
-  - SQUARE stroke caps for rectangular bars
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-### Setup Instructions
+# Install dependencies
+pip install -r requirements.txt
 
-**IMPORTANT**: Due to browser security restrictions with AudioWorklets, you must run a local web server. Opening the HTML file directly will cause errors.
+# Configure environment variables
+cp .env.example .env
+# Edit .env and add your ANTHROPIC_API_KEY
 
-1. **Start the local web server**:
-   ```bash
-   ./start-server.sh
-   ```
-   Then open your browser to: **http://localhost:8000**
+# Seed the database with metric types
+python -m app.seed_data
 
-   *Alternative: If you prefer Python directly:*
-   ```bash
-   python3 -m http.server 8000
-   ```
-
-2. **Configure audio input**:
-   - Connect your audio device (microphone, line-in, stethoscope, etc.)
-   - Ensure it's selected as the default input in your system settings
-   - Or use browser permissions to select the specific device
-
-3. **Start visualization**:
-   - Click the "Click to Start Audio Visualization" button
-   - Grant microphone/audio permissions when prompted by the browser
-   - The visualization will start immediately
-
-### Using with Hardware Audio Devices
-
-To use with specialized devices like an electronically converted stethoscope:
-
-1. Connect the device to your computer's audio input (line-in or USB audio interface)
-2. Set the device as the default recording device in your system audio settings
-3. Open the app and grant audio permissions
-4. The visualization will display the audio signal from your hardware device
-
-### Browser Compatibility
-
-- Chrome/Edge: Full support
-- Firefox: Full support
-- Safari: Full support (may require HTTPS for audio access)
-
-**Note**: Modern browsers require user interaction before accessing audio devices. This is why the "Start" button is necessary.
-
-### Project Structure
-
-```
-/
-├── index.html        # Main HTML file with p5.js library imports
-├── sketch.js         # p5.js sketch with audio visualization code
-├── start-server.sh   # Script to start local web server
-└── README.md         # This file
+# Run the server
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Customization
+The API will be available at http://localhost:8000
 
-You can modify the following parameters in `sketch.js`:
+### Frontend Setup
 
-- **Canvas size**: Change `createCanvas(640, 480)` to your desired dimensions
-- **Number of frequency bands**: Modify `numBands` variable (default: 63)
-- **Color cycling speed**: Adjust `hVal += 2` (higher = faster color changes)
-- **Amplitude scaling**: Change the multiplier in `height - h * 0.8`
-- **Fade effect intensity**: Adjust `tint(255, 255, 255, 254)` (lower alpha = more fade)
-- **Fade scaling**: Modify `rWidth` and `rHeight` (default: 99% = 0.99)
+```bash
+# Navigate to frontend directory
+cd frontend
 
-### Future Enhancements
+# Install dependencies
+npm install
 
-Planned features for future development:
+# Run development server
+npm run dev
+```
 
-- Multiple visualization modes (waveform, circular, 3D)
-- User controls for adjusting sensitivity and visual parameters
-- Recording and playback functionality
-- Audio filters and effects
-- Frequency range selection
-- Custom color schemes
+The frontend will be available at http://localhost:3000
 
-### License
+## 📊 Current Features (Phase 1: Data Ingestion)
 
-This is an experimental project for testing purposes.
+### ✅ Completed
+
+- [x] Full-stack architecture (Next.js + FastAPI)
+- [x] SQLite database with comprehensive schema
+- [x] 23 pre-configured health metric types
+- [x] CSV parser for Apple Health HRV data (with daily aggregation)
+- [x] TXT parser for menstrual cycle tracking
+- [x] PDF parser using Claude AI for lab reports
+- [x] Dynamic cycle phase calculation (follicular, ovulatory, luteal, menstrual)
+- [x] File upload API endpoints
+
+### 📦 Data Types Supported
+
+1. **HRV Data** (CSV)
+   - Apple Health export format
+   - Daily averaging with metadata (std, min, max, count)
+
+2. **Menstrual Cycle** (TXT)
+   - Markdown table format
+   - Automatic cycle phase calculation based on individual cycle length
+   - Generates daily cycle metrics
+
+3. **Lab Reports** (PDF)
+   - Quest Diagnostics format
+   - LLM-powered extraction
+   - Supports: metabolic panel, lipids, thyroid, CBC, vitamins
+
+### 🔬 Tracked Metrics
+
+**Recovery:**
+- HRV SDNN, Resting Heart Rate, Sleep Duration
+
+**Cycle:**
+- Cycle Length, Cycle Phase, Cycle Day
+
+**Lab Results:**
+- Glucose, HbA1c, Insulin
+- Total/LDL/HDL Cholesterol, Triglycerides
+- TSH, T4, Thyroid Antibodies
+- Vitamin D, WBC, Creatinine, eGFR
+
+**Fitness (Future):**
+- VO2 Max, Training Load
+
+## 📁 Project Structure
+
+```
+healthops/
+├── frontend/              # Next.js frontend
+│   ├── app/              # App router pages
+│   ├── components/       # React components
+│   └── package.json
+├── backend/              # FastAPI backend
+│   ├── app/
+│   │   ├── models.py     # SQLAlchemy models
+│   │   ├── main.py       # FastAPI app
+│   │   ├── database.py   # DB connection
+│   │   ├── seed_data.py  # Metric types seed
+│   │   ├── parsers/      # Data parsers
+│   │   │   ├── csv_parser.py
+│   │   │   ├── cycle_parser.py
+│   │   │   └── pdf_parser.py
+│   │   └── routers/      # API routes
+│   │       └── upload.py
+│   └── requirements.txt
+└── sample-data/          # Example data files
+    ├── hrv_sdnn.csv
+    ├── period_cycle_data.txt
+    └── Langley_Quest_labreport_Aug2025.pdf
+```
+
+## 🧪 Testing the Parsers
+
+Upload your sample data files:
+
+```bash
+# Test CSV upload
+curl -X POST http://localhost:8000/api/upload/csv \
+  -F "file=@sample-data/hrv_sdnn.csv"
+
+# Test TXT upload
+curl -X POST http://localhost:8000/api/upload/txt \
+  -F "file=@sample-data/period_cycle_data.txt"
+
+# Test PDF upload (requires ANTHROPIC_API_KEY)
+curl -X POST http://localhost:8000/api/upload/pdf \
+  -F "file=@sample-data/Langley_Quest_labreport_Aug2025.pdf"
+```
+
+## 🗺️ Roadmap
+
+### Phase 2: Core Analytics (Next)
+- [ ] Data retrieval APIs
+- [ ] Statistical correlation functions
+- [ ] Cycle-aware analysis engine
+- [ ] Trend detection
+
+### Phase 3: Dashboard UI
+- [ ] Command Center (home page)
+- [ ] Deep Dive pages (Recovery, Cycle, Fitness)
+- [ ] Chart visualizations (Recharts)
+- [ ] Dark mode
+
+### Phase 4: LLM Integration
+- [ ] Natural language Q&A
+- [ ] Proactive recommendations
+- [ ] Daily insights generation
+
+### Phase 5: Polish
+- [ ] Data export
+- [ ] Error handling
+- [ ] Performance optimization
+- [ ] Testing suite
+
+## 🎨 Design Philosophy
+
+**Aesthetic:** "Medical Modern"
+- Minimalist, clean, abundant whitespace
+- Soft neutrals for UI
+- Bold, high-contrast colors (Neon Green, Electric Blue, Hot Pink) for data charts
+- Inspired by: Spotify × Strava × Apple Health
+
+**Health Science:** Physiology-first
+- Women-specific adaptations (cycle-aware training)
+- Readiness indicators (HRV, load, sleep, stress)
+- Science-backed recommendations
+- Based on: Dr. Stacy Sims, Dr. Peter Attia, Dr. Andrew Huberman
+
+## 📝 License
+
+Private project - Not licensed for public use
+
+## 🙏 Acknowledgments
+
+Built with Claude AI and passion for data-driven health optimization.
