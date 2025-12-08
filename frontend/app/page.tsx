@@ -80,15 +80,15 @@ export default function Home() {
         <div className="mt-16 text-center">
           <div className="inline-grid grid-cols-3 gap-12">
             <div>
-              <div className="text-3xl font-light text-[#39FF14] mb-1">9,774</div>
+              <div className="text-3xl font-semibold text-[#00FF00] mb-1">9,774</div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Health Metrics</div>
             </div>
             <div>
-              <div className="text-3xl font-light text-[#7DF9FF] mb-1">2,832</div>
+              <div className="text-3xl font-semibold text-[#00D9FF] mb-1">2,832</div>
               <div className="text-sm text-gray-600 dark:text-gray-400">HRV Readings</div>
             </div>
             <div>
-              <div className="text-3xl font-light text-[#FF1493] mb-1">9</div>
+              <div className="text-3xl font-semibold text-[#FF0080] mb-1">9</div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Years of Data</div>
             </div>
           </div>

@@ -60,14 +60,14 @@ export function getTrendIndicator(trend: 'increasing' | 'decreasing' | 'stable')
 }
 
 /**
- * Get cycle phase color
+ * Get cycle phase color (high contrast, vibrant)
  */
 export function getCyclePhaseColor(phase: string): string {
   const colors: Record<string, string> = {
-    menstrual: '#FF1493', // Hot pink
-    follicular: '#39FF14', // Neon green
-    ovulatory: '#7DF9FF', // Electric blue
-    luteal: '#FFB6C1', // Light pink
+    menstrual: '#FF0080', // Vibrant hot pink
+    follicular: '#00FF00', // Pure neon green
+    ovulatory: '#00D9FF', // Bright cyan
+    luteal: '#FF69B4', // Saturated pink
   };
   return colors[phase.toLowerCase()] || '#999999';
 }

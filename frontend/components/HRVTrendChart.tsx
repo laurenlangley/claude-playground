@@ -48,17 +48,18 @@ export default function HRVTrendChart({ data, showMovingAverage = true }: HRVTre
           <Line
             type="monotone"
             dataKey="hrv"
-            stroke="#7DF9FF"
-            strokeWidth={2}
-            dot={{ fill: '#7DF9FF', r: 3 }}
+            stroke="#00D9FF"
+            strokeWidth={3}
+            dot={{ fill: '#00D9FF', r: 4, strokeWidth: 2, stroke: '#FFFFFF' }}
             name="HRV"
+            activeDot={{ r: 6 }}
           />
           {showMovingAverage && (
             <Line
               type="monotone"
               dataKey="ma"
-              stroke="#39FF14"
-              strokeWidth={2}
+              stroke="#00FF00"
+              strokeWidth={3}
               strokeDasharray="5 5"
               dot={false}
               name="7-day Average"
