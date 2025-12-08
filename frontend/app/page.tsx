@@ -35,18 +35,22 @@ export default function Home() {
           </Link>
 
           {/* Upload Card */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 p-8">
-            <div className="text-4xl mb-4">📁</div>
-            <h2 className="text-2xl font-light text-gray-900 dark:text-white mb-3">
-              Upload Data
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Import health data from CSVs, PDFs, or manual logs
-            </p>
-            <div className="text-gray-400">
-              Coming soon...
+          <Link href="/upload" className="group">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border-2 border-transparent hover:border-[#00FF00] transition-all duration-300 p-8 h-full">
+              <div className="flex flex-col h-full">
+                <div className="text-4xl mb-4">📁</div>
+                <h2 className="text-2xl font-light text-gray-900 dark:text-white mb-3">
+                  Upload Data
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-4 flex-1">
+                  Import health data from CSVs, PDFs, or manual logs
+                </p>
+                <div className="text-[#00FF00] group-hover:translate-x-2 transition-transform">
+                  Upload Files →
+                </div>
+              </div>
             </div>
-          </div>
+          </Link>
         </div>
 
         {/* Features Grid */}
