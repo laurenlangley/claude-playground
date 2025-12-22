@@ -60,10 +60,12 @@ class Radio {
     }
   }
 
-  void pressRadio(float mx, float my) {
+  boolean pressRadio(float mx, float my) {
     if (dist(x, y, mx, my) < size/2) {
       select();
+      return true;
     }
+    return false;
   }
 
   void select() {
