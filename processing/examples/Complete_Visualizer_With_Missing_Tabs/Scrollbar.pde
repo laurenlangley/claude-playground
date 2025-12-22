@@ -36,8 +36,8 @@ class Scrollbar {
     maxVal = mav;
   }
 
-  void update() {
-    if (overEvent()) {
+  void update(int mx, int my) {
+    if (overEvent(mx, my)) {
       over = true;
     } else {
       over = false;
@@ -49,7 +49,7 @@ class Scrollbar {
       locked = false;
     }
     if (locked) {
-      newspos = constrain(mouseX-sheight/2, sposMin, sposMax);
+      newspos = constrain(mx-sheight/2, sposMin, sposMax);
     }
     if (abs(newspos - spos) > 1) {
       spos = spos + (newspos-spos)/loose;
@@ -60,9 +60,9 @@ class Scrollbar {
     return min(max(val, minv), maxv);
   }
 
-  boolean overEvent() {
-    if (mouseX > xpos && mouseX < xpos+swidth &&
-       mouseY > ypos && mouseY < ypos+sheight) {
+  boolean overEvent(int mx, int my) {
+    if (mx > xpos && mx < xpos+swidth &&
+       my > ypos && my < ypos+sheight) {
       return true;
     } else {
       return false;

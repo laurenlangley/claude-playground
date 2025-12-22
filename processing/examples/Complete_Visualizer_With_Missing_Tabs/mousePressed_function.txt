@@ -1,0 +1,17 @@
+/*
+ * ADD THIS FUNCTION TO YOUR MAIN SKETCH
+ *
+ * This should be added at the end of your main .pde file
+ * (the one with setup() and draw())
+ *
+ * This handles clicking on the radio buttons to select serial port
+ */
+
+void mousePressed() {
+  if (!serialPortFound) {
+    // Only check buttons when port selection is active
+    for (int i = 0; i <= numPorts; i++) {
+      button[i].pressRadio(mouseX, mouseY);
+    }
+  }
+}
