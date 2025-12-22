@@ -78,20 +78,10 @@ class Radio {
 
     // Handle port selection
     if (me < numPorts) {
-      // Selected a serial port
+      // Selected a serial port - set the port name
+      // The main sketch will handle actually opening the connection
       serialPort = serialPorts[me];
-      try {
-        if (port != null) {
-          port.stop();
-        }
-        port = new Serial(this, serialPort, 115200);  // BAUD RATE SET HERE!
-        port.bufferUntil('\n');
-        serialPortFound = true;
-        println("Connected to: " + serialPort);
-      } catch (Exception e) {
-        println("Error connecting to " + serialPort);
-        serialPortFound = false;
-      }
+      serialPortFound = true;
     } else {
       // Selected the refresh button
       refreshPorts = true;

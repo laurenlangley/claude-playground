@@ -1,0 +1,63 @@
+/*
+ * ADD THIS TO YOUR MAIN SKETCH (setup function)
+ *
+ * Add this code right after you create the Radio buttons in setup()
+ * This opens the serial connection when a port is selected
+ */
+
+// Add this in your draw() function, in the else block where you scan buttons:
+// Replace this section in your draw():
+
+/*
+} else { // SCAN BUTTONS TO FIND THE SERIAL PORT
+
+  autoScanPorts();
+
+  if(refreshPorts){
+    refreshPorts = false;
+    drawDataWindows();
+    drawHeart();
+    listAvailablePorts();
+  }
+
+  for(int i=0; i<numPorts+1; i++){
+    button[i].overRadio(mouseX,mouseY);
+    button[i].displayRadio();
+  }
+
+}
+*/
+
+// WITH THIS (adds serial port opening logic):
+
+/*
+} else { // SCAN BUTTONS TO FIND THE SERIAL PORT
+
+  autoScanPorts();
+
+  if(refreshPorts){
+    refreshPorts = false;
+    drawDataWindows();
+    drawHeart();
+    listAvailablePorts();
+  }
+
+  for(int i=0; i<numPorts+1; i++){
+    button[i].overRadio(mouseX,mouseY);
+    button[i].displayRadio();
+  }
+
+  // NEW: Open serial port when one is selected
+  if(serialPortFound && port == null){
+    try {
+      port = new Serial(this, serialPort, 115200);
+      port.bufferUntil('\n');
+      println("Connected to: " + serialPort);
+    } catch (Exception e) {
+      println("Error connecting to " + serialPort);
+      serialPortFound = false;
+    }
+  }
+
+}
+*/
