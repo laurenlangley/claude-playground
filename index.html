@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Mosaic</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Portfolio Gallery</h1>
+            <div class="filters">
+                <select id="yearFilter" class="filter-select">
+                    <option value="all">All Years</option>
+                    <option value="2020-2026">2020-2026</option>
+                    <option value="2010-2019">2010-2019</option>
+                    <option value="2000-2009">2000-2009</option>
+                </select>
+                <select id="categoryFilter" class="filter-select">
+                    <option value="all">All Categories</option>
+                    <option value="web">Web Design</option>
+                    <option value="branding">Branding</option>
+                    <option value="photography">Photography</option>
+                    <option value="illustration">Illustration</option>
+                </select>
+                <select id="colorFilter" class="filter-select">
+                    <option value="all">All Colors</option>
+                    <option value="warm">Warm Tones</option>
+                    <option value="cool">Cool Tones</option>
+                    <option value="neutral">Neutral</option>
+                </select>
+            </div>
+        </header>
+
+        <div class="mosaic-grid" id="mosaicGrid">
+            <!-- Mosaic items will be dynamically generated -->
+        </div>
+    </div>
+
+    <!-- Modal overlay for focused view -->
+    <div class="modal-overlay" id="modalOverlay">
+        <button class="close-btn" id="closeBtn">&times;</button>
+        <div class="modal-content">
+            <div class="modal-image" id="modalImage"></div>
+            <div class="modal-info">
+                <h2 id="modalTitle"></h2>
+                <p id="modalDescription"></p>
+                <div class="modal-meta">
+                    <span class="meta-item" id="modalYear"></span>
+                    <span class="meta-item" id="modalCategory"></span>
+                    <span class="meta-item" id="modalCompany"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
