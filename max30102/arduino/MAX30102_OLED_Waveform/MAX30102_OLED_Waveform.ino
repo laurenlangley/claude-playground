@@ -45,9 +45,11 @@ bool fingerPresent = false;
 bool inDip = false;
 unsigned long lastBeatTime = 0;
 
-// ---- Display auto-scale envelope ----
-float waveMax = 0;
-float waveMin = 0;
+// ---- Display auto-scale: learned beat (dip) amplitude ----
+// We plot dip depth relative to `baseline`, which already tracks slow DC
+// drift from finger pressure. Scaling by the learned dip amplitude makes
+// every beat fill ~90% of the waveform height regardless of signal level.
+float dipAmp = 800;              // typical dip depth in counts; adapts live
 
 // ---- BPM averaging ----
 const byte RATE_SIZE = 4;
@@ -130,8 +132,7 @@ void loop() {
   if (!fingerPresent) {
     fingerPresent = true;
     baseline = ir;
-    waveMax = ir;
-    waveMin = ir - 1500;     // seed a plausible dip depth
+    dipAmp = 800;            // reseed amplitude; adapts within a few beats
     Serial.println(F("Finger detected. Measuring..."));
   }
 
@@ -168,15 +169,22 @@ void loop() {
     inDip = false;
   }
 
-  // ===== DISPLAY AUTO-SCALE ENVELOPE (fast expand, slow contract) =====
-  if (ir > waveMax) waveMax = ir; else waveMax -= (waveMax - ir) * 0.002;
-  if (ir < waveMin) waveMin = ir; else waveMin += (ir - waveMin) * 0.002;
-  float range = waveMax - waveMin;
-  if (range < 300) range = 300;                     // guard against flat/zero
+  // ===== WAVEFORM VALUE: dip depth below the drift-tracking baseline =====
+  // `baseline` follows slow DC drift (finger pressure), so v isolates just
+  // the heartbeat pulse: ~0 between beats, large during each dip.
+  float v = baseline - ir;
+  if (v < 0) v = 0;
 
-  // Inverted so a beat (dip in IR) spikes UP from the baseline at the bottom
-  float v = waveMax - ir;                            // 0 at top of signal, big during dip
-  int y = WAVE_BOTTOM - (int)(v * (WAVE_BOTTOM - WAVE_TOP) / range);
+  // Learn the typical beat amplitude: expand fast on a bigger dip,
+  // decay slowly (~3%/sec) so the scale stays steady between beats.
+  if (v > dipAmp) dipAmp += (v - dipAmp) * 0.30;
+  else            dipAmp -= dipAmp * 0.0005;
+  if (dipAmp < 300) dipAmp = 300;                   // noise floor guard
+
+  // Map a full-size beat to ~90% of the waveform height; clamp so spikes
+  // can never exceed the top of the plot area.
+  int waveH = WAVE_BOTTOM - WAVE_TOP;
+  int y = WAVE_BOTTOM - (int)(v * (waveH * 0.90f) / dipAmp);
   if (y < WAVE_TOP) y = WAVE_TOP;
   if (y > WAVE_BOTTOM) y = WAVE_BOTTOM;
 
