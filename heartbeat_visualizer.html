@@ -791,18 +791,35 @@
             }
         }
 
+        let receivedFirstData = false;
+        let waveformLineCount = 0;
+
         function processSerialLine(line) {
             if (!line) return;
 
+            if (!receivedFirstData) {
+                receivedFirstData = true;
+                document.getElementById('statusText').textContent = 'Receiving data from Arduino';
+                console.log('First serial line received:', JSON.stringify(line));
+            }
+
             // Parse data format: W,value | B,bpm | A,avgbpm | F,0/1
             const parts = line.split(',');
-            if (parts.length < 2) return;
+            if (parts.length < 2) {
+                // Lines like "READY" or output from a different sketch land here
+                console.log('Serial (unrecognized):', line);
+                return;
+            }
 
             const type = parts[0];
             const value = parseInt(parts[1]);
 
             switch (type) {
                 case 'W':  // Waveform data
+                    // Log occasionally so the console shows data is flowing
+                    if (waveformLineCount++ % 100 === 0) {
+                        console.log(`Waveform data flowing (${waveformLineCount} samples), latest:`, value);
+                    }
                     waveformBuffer.push(value);
                     if (waveformBuffer.length > WAVEFORM_SIZE) {
                         waveformBuffer.shift();
@@ -848,6 +865,10 @@
 
                 case 'ERROR':
                     console.error('Arduino error:', parts.slice(1).join(','));
+                    break;
+
+                default:
+                    console.log('Serial (unrecognized):', line);
                     break;
             }
         }
