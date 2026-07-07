@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino Heartbeat Visualizer</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&display=swap');
+
+        :root {
+            /* Color Tokens */
+            --color-primary: #00ffc8;
+            --color-secondary: #ff006e;
+            --color-tertiary: #8338ec;
+            --color-heart: #00ffc8;
+            --color-lung: #ff006e;
+
+            /* Theme Colors */
+            --bg-primary: #0a0e14;
+            --bg-secondary: #151a23;
+            --bg-tertiary: #1f2633;
+            --text-primary: #e5e9f0;
+            --text-secondary: #7d8b99;
+            --grid-color: rgba(0, 255, 200, 0.15);
+
+            /* Typography Scale (1.25 ratio, base 16px) */
+            --font-xs: 12px;
+            --font-sm: 16px;
+            --font-md: 20px;
+            --font-lg: 25px;
+            --font-xl: 31px;
+
+            /* Spacing (8pt grid) */
+            --space-1: 8px;
+            --space-2: 16px;
+            --space-3: 24px;
+            --space-4: 32px;
+            --space-5: 40px;
+            --space-6: 48px;
+
+            /* Touch targets */
+            --touch-min: 44px;
+        }
+
+        /* High Contrast Theme */
+        [data-theme="high-contrast"] {
+            --bg-primary: #000000;
+            --bg-secondary: #1a1a1a;
+            --color-primary: #00ffff;
+            --text-primary: #ffffff;
+            --grid-color: rgba(0, 255, 255, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+            font-size: var(--font-sm);
+        }
+
+        .grid-background {
+            position: fixed;
+            inset: 0;
+            background-image:
+                repeating-linear-gradient(0deg, var(--grid-color) 0px, transparent 1px, transparent 40px),
+                repeating-linear-gradient(90deg, var(--grid-color) 0px, transparent 1px, transparent 40px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            padding: var(--space-3) var(--space-4);
+            border-bottom: 1px solid rgba(0, 255, 200, 0.1);
+            background: linear-gradient(180deg, var(--bg-primary) 0%, transparent 100%);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: var(--font-xl);
+            font-weight: 300;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, var(--color-primary), var(--color-tertiary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: var(--space-2);
+            align-items: center;
+        }
+
+        .icon-button {
+            background: transparent;
+            border: 1px solid var(--color-primary);
+            color: var(--color-primary);
+            width: var(--touch-min);
+            height: var(--touch-min);
+            min-width: var(--touch-min);
+            min-height: var(--touch-min);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: var(--font-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .icon-button:hover {
+            background: var(--color-primary);
+            color: var(--bg-primary);
+        }
+
+        .icon-button.active {
+            background: var(--color-primary);
+            color: var(--bg-primary);
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            gap: 1px;
+            background: rgba(0, 255, 200, 0.05);
+            padding: 1px;
+            min-height: 0;
+        }
+
+        .canvas-container {
+            flex: 1;
+            background: var(--bg-secondary);
+            position: relative;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls-panel {
+            width: 360px;
+            background: var(--bg-secondary);
+            padding: var(--space-3);
+            padding-bottom: var(--space-5);
+            max-height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            border-left: 1px solid rgba(0, 255, 200, 0.1);
+        }
+
+        .controls-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .controls-panel::-webkit-scrollbar-track {
+            background: rgba(0, 255, 200, 0.05);
+        }
+
+        .controls-panel::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 200, 0.3);
+            border-radius: 4px;
+        }
+
+        /* Accordion Sections */
+        .accordion-section {
+            margin-bottom: var(--space-2);
+            border: 1px solid rgba(0, 255, 200, 0.1);
+            background: var(--bg-tertiary);
+        }
+
+        .accordion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-2);
+            cursor: pointer;
+            user-select: none;
+            min-height: var(--touch-min);
+            transition: background 0.2s ease;
+        }
+
+        .accordion-header:hover {
+            background: rgba(0, 255, 200, 0.05);
+        }
+
+        .accordion-title {
+            font-size: var(--font-sm);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--color-primary);
+        }
+
+        .accordion-icon {
+            font-size: var(--font-md);
+            transition: transform 0.3s ease;
+        }
+
+        .accordion-section.collapsed .accordion-icon {
+            transform: rotate(-90deg);
+        }
+
+        .accordion-content {
+            padding: var(--space-2);
+            padding-top: 0;
+            max-height: 2000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+        }
+
+        .accordion-section.collapsed .accordion-content {
+            max-height: 0;
+            opacity: 0;
+            padding: 0 var(--space-2);
+        }
+
+        .control-group {
+            margin-bottom: var(--space-3);
+        }
+
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-1);
+        }
+
+        button:not(.icon-button):not(.accordion-header) {
+            background: transparent;
+            border: 1px solid rgba(0, 255, 200, 0.2);
+            color: var(--text-primary);
+            padding: var(--space-2);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: var(--font-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            min-height: var(--touch-min);
+        }
+
+        button:not(.icon-button):hover {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+        }
+
+        button.active {
+            background: rgba(0, 255, 200, 0.1);
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+        }
+
+        button.primary {
+            background: var(--color-primary);
+            color: var(--bg-primary);
+            border-color: var(--color-primary);
+            font-weight: 600;
+        }
+
+        button.primary:hover {
+            background: transparent;
+            color: var(--color-primary);
+        }
+
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .slider-group {
+            margin-bottom: var(--space-2);
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: var(--font-xs);
+            margin-bottom: var(--space-1);
+            color: var(--text-secondary);
+        }
+
+        .slider-value {
+            color: var(--color-primary);
+            font-weight: 600;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 2px;
+            background: rgba(0, 255, 200, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--color-primary);
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0, 255, 200, 0.5);
+        }
+
+        .status {
+            padding: var(--space-2);
+            background: rgba(0, 255, 200, 0.05);
+            border-left: 2px solid var(--color-primary);
+            font-size: var(--font-xs);
+            line-height: 1.6;
+            margin-top: var(--space-2);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--color-secondary);
+            margin-right: var(--space-1);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .status-indicator.active {
+            background: var(--color-primary);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .info-overlay {
+            position: absolute;
+            top: var(--space-3);
+            right: var(--space-3);
+            background: rgba(10, 14, 20, 0.9);
+            border: 1px solid var(--color-primary);
+            padding: var(--space-2) var(--space-3);
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+
+        .info-row {
+            margin-bottom: var(--space-2);
+        }
+
+        .info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-label {
+            font-size: var(--font-xs);
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: var(--space-1);
+        }
+
+        .info-value {
+            font-size: var(--font-lg);
+            color: var(--color-primary);
+            font-weight: 700;
+            line-height: 1.2;
+            text-shadow: 0 0 10px rgba(0, 255, 200, 0.5);
+        }
+
+        .info-value.large {
+            font-size: var(--font-xl);
+        }
+
+        /* Loading State */
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(10, 14, 20, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid rgba(0, 255, 200, 0.1);
+            border-top-color: var(--color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+            margin-top: var(--space-3);
+            color: var(--color-primary);
+            font-size: var(--font-md);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        [data-reduced-motion="true"] * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+    </style>
+</head>
+<body data-theme="default" data-reduced-motion="false">
+    <div class="grid-background"></div>
+
+    <div class="container">
+        <header>
+            <h1>Arduino Heartbeat Visualizer</h1>
+            <div class="header-controls">
+                <button class="icon-button" id="contrastToggle" title="Toggle High Contrast" aria-label="Toggle high contrast mode">◐</button>
+                <button class="icon-button" id="motionToggle" title="Toggle Reduced Motion" aria-label="Toggle reduced motion">⏸</button>
+            </div>
+        </header>
+
+        <main>
+            <div class="canvas-container">
+                <div class="loading-overlay" id="loadingOverlay">
+                    <div class="loading-text">Connect Arduino to begin</div>
+                </div>
+                <canvas id="visualizer"></canvas>
+                <div class="info-overlay">
+                    <div class="info-row">
+                        <div class="info-label">BPM</div>
+                        <div class="info-value large" id="overlayBPM">--</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Status</div>
+                        <div class="info-value" id="overlayStatus" style="font-size: 16px;">Waiting</div>
+                    </div>
+                </div>
+            </div>
+
+            <aside class="controls-panel">
+                <!-- Arduino Connection Section -->
+                <div class="accordion-section" data-section="arduino-connection">
+                    <div class="accordion-header" role="button" tabindex="0" aria-expanded="true">
+                        <span class="accordion-title">Arduino Connection</span>
+                        <span class="accordion-icon">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="control-group">
+                            <div class="button-group">
+                                <button id="connectBtn" class="primary">Connect to Arduino</button>
+                                <button id="disconnectBtn" disabled>Disconnect</button>
+                            </div>
+                            <div class="status">
+                                <span class="status-indicator" id="statusIndicator"></span>
+                                <span id="statusText">Ready to connect</span>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <div class="status" style="margin-top: 0;">
+                                <strong>Instructions:</strong><br>
+                                1. Upload Arduino sketch<br>
+                                2. Click "Connect to Arduino"<br>
+                                3. Select serial port<br>
+                                4. Place finger on sensor
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visualization Section -->
+                <div class="accordion-section" data-section="visualization">
+                    <div class="accordion-header" role="button" tabindex="0" aria-expanded="true">
+                        <span class="accordion-title">Visualization</span>
+                        <span class="accordion-icon">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="control-group">
+                            <div class="button-group">
+                                <button class="mode-btn active" data-mode="waveform">Waveform</button>
+                                <button class="mode-btn" data-mode="frequency">Frequency Spectrum</button>
+                                <button class="mode-btn" data-mode="circular">Circular Spectrum</button>
+                                <button class="mode-btn" data-mode="particles">Particle Flow</button>
+                                <button class="mode-btn" data-mode="oscilloscope">Oscilloscope</button>
+                            </div>
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>Sensitivity</span>
+                                <span class="slider-value" id="sensitivityValue">1.0x</span>
+                            </div>
+                            <input type="range" id="sensitivity" min="0.1" max="3" step="0.1" value="1" aria-label="Visualization sensitivity">
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>Low Freq Color</span>
+                                <span class="slider-value" id="colorStartValue" style="display: inline-block; width: 20px; height: 20px; background: hsl(160, 70%, 60%); border-radius: 3px; vertical-align: middle;"></span>
+                            </div>
+                            <input type="range" id="colorStart" min="0" max="360" step="1" value="160" aria-label="Low frequency color hue">
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>High Freq Color</span>
+                                <span class="slider-value" id="colorEndValue" style="display: inline-block; width: 20px; height: 20px; background: hsl(220, 70%, 60%); border-radius: 3px; vertical-align: middle;"></span>
+                            </div>
+                            <input type="range" id="colorEnd" min="0" max="360" step="1" value="220" aria-label="High frequency color hue">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analysis Output Section -->
+                <div class="accordion-section" data-section="analysis">
+                    <div class="accordion-header" role="button" tabindex="0" aria-expanded="true">
+                        <span class="accordion-title">Sensor Data</span>
+                        <span class="accordion-icon">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="status">
+                            <div style="margin-bottom: 8px;">
+                                <strong>Current BPM:</strong> <span id="instantBPM" style="color: var(--color-primary);">--</span>
+                            </div>
+                            <div style="margin-bottom: 8px;">
+                                <strong>Average BPM:</strong> <span id="avgBPM" style="color: var(--color-primary);">--</span>
+                            </div>
+                            <div>
+                                <strong>Signal Strength:</strong> <span id="signalStrength" style="color: var(--color-primary);">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <script>
+        // Serial port connection
+        let port;
+        let reader;
+        let isConnected = false;
+
+        // Data buffers
+        let waveformBuffer = [];
+        let frequencyBuffer = new Uint8Array(128);
+        const WAVEFORM_SIZE = 512;
+        const FREQUENCY_BINS = 128;
+
+        // BPM tracking
+        let currentBPM = 0;
+        let avgBPM = 0;
+        let fingerPresent = false;
+        let lastBeatTime = 0;
+
+        // Visualization state
+        let currentMode = 'waveform';
+        let sensitivity = 1.0;
+        let animationId;
+
+        // Color controls
+        let colorHueStart = 160;
+        let colorHueEnd = 220;
+
+        // Canvas setup
+        const canvas = document.getElementById('visualizer');
+        const ctx = canvas.getContext('2d');
+
+        // Particle system
+        let particles = [];
+        const PARTICLE_COUNT = 200;
+
+        // Oscilloscope buffer
+        let oscilloscopeBuffer = [];
+        const OSCILLOSCOPE_BUFFER_SIZE = 2000;
+
+        // Resize canvas
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+            canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Particle class
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                const width = canvas.width / window.devicePixelRatio;
+                const height = canvas.height / window.devicePixelRatio;
+
+                this.freqIndex = Math.floor(Math.random() * 100);
+                this.x = (this.freqIndex / 100) * width;
+                this.y = height;
+
+                this.vx = 0;
+                this.vy = 0;
+                this.life = 1;
+                this.size = Math.random() * 1.5 + 0.5;
+                this.targetY = height * 0.3;
+                this.baseX = this.x;
+            }
+
+            update(audioData) {
+                const width = canvas.width / window.devicePixelRatio;
+                const height = canvas.height / window.devicePixelRatio;
+
+                const dataIndex = Math.floor((this.freqIndex / 100) * audioData.length);
+                const audioValue = audioData[Math.min(dataIndex, audioData.length - 1)] / 255;
+
+                if (audioValue > 0.1) {
+                    const riseForce = audioValue * 2.5;
+                    this.vy -= riseForce;
+
+                    const drift = (this.freqIndex / 100 - 0.5) * 0.3;
+                    this.vx += drift * audioValue;
+
+                    this.vx += (Math.random() - 0.5) * 0.5 * audioValue;
+                }
+
+                this.vy += 0.05;
+                this.vx *= 0.98;
+                this.vy *= 0.96;
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                this.size = 0.5 + audioValue * 3;
+
+                const distanceFromBottom = (height - this.y) / height;
+                this.life = 1 - distanceFromBottom * 0.7;
+
+                if (this.life <= 0.1 || this.y < -50 || this.x < -50 || this.x > width + 50) {
+                    this.reset();
+                }
+            }
+
+            draw() {
+                const t = this.freqIndex / 100;
+                const hue = colorHueStart + (colorHueEnd - colorHueStart) * t;
+                const opacity = this.life * 0.8;
+
+                ctx.fillStyle = `hsla(${hue}, 70%, 60%, ${opacity})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (Math.abs(this.vx) > 0.2 || Math.abs(this.vy) > 0.2) {
+                    ctx.strokeStyle = `hsla(${hue}, 70%, 60%, ${opacity * 0.3})`;
+                    ctx.lineWidth = this.size * 0.5;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y);
+                    ctx.lineTo(this.x - this.vx * 5, this.y - this.vy * 5);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            particles.push(new Particle());
+        }
+
+        // Serial connection functions
+        async function connectArduino() {
+            if (!('serial' in navigator)) {
+                alert('Web Serial API not supported. Please use Chrome or Edge browser.');
+                return;
+            }
+
+            try {
+                // Request port
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 115200 });
+
+                isConnected = true;
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('disconnectBtn').disabled = false;
+                document.getElementById('statusIndicator').classList.add('active');
+                document.getElementById('statusText').textContent = 'Connected - waiting for data...';
+                document.getElementById('loadingOverlay').classList.add('hidden');
+
+                // Start reading
+                readSerialData();
+                visualize();
+
+            } catch (error) {
+                console.error('Error connecting to Arduino:', error);
+                document.getElementById('statusText').textContent = 'Connection failed: ' + error.message;
+            }
+        }
+
+        async function disconnectArduino() {
+            if (reader) {
+                await reader.cancel();
+                reader = null;
+            }
+            if (port) {
+                await port.close();
+                port = null;
+            }
+
+            isConnected = false;
+            document.getElementById('connectBtn').disabled = false;
+            document.getElementById('disconnectBtn').disabled = true;
+            document.getElementById('statusIndicator').classList.remove('active');
+            document.getElementById('statusText').textContent = 'Disconnected';
+
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+
+            const width = canvas.width / window.devicePixelRatio;
+            const height = canvas.height / window.devicePixelRatio;
+            ctx.fillStyle = '#0a0e14';
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        async function readSerialData() {
+            const textDecoder = new TextDecoderStream();
+            const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+            reader = textDecoder.readable.getReader();
+
+            let buffer = '';
+
+            try {
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) {
+                        break;
+                    }
+
+                    buffer += value;
+                    let lines = buffer.split('\n');
+                    buffer = lines.pop(); // Keep incomplete line in buffer
+
+                    for (let line of lines) {
+                        processSerialLine(line.trim());
+                    }
+                }
+            } catch (error) {
+                console.error('Error reading serial data:', error);
+            } finally {
+                reader.releaseLock();
+            }
+        }
+
+        function processSerialLine(line) {
+            if (!line) return;
+
+            // Parse data format: W,value | B,bpm | A,avgbpm | F,0/1
+            const parts = line.split(',');
+            if (parts.length < 2) return;
+
+            const type = parts[0];
+            const value = parseInt(parts[1]);
+
+            switch (type) {
+                case 'W':  // Waveform data
+                    waveformBuffer.push(value);
+                    if (waveformBuffer.length > WAVEFORM_SIZE) {
+                        waveformBuffer.shift();
+                    }
+
+                    // Convert waveform to frequency-like data for spectrum views
+                    updateFrequencyBuffer(value);
+
+                    // Update signal strength display
+                    document.getElementById('signalStrength').textContent = value;
+                    break;
+
+                case 'B':  // Beat detected (instant BPM)
+                    currentBPM = value;
+                    lastBeatTime = Date.now();
+                    document.getElementById('instantBPM').textContent = value;
+                    break;
+
+                case 'A':  // Average BPM
+                    avgBPM = value;
+                    document.getElementById('avgBPM').textContent = value;
+                    document.getElementById('overlayBPM').textContent = value;
+
+                    // Update status based on BPM
+                    let status = 'Normal';
+                    if (value < 60) status = 'Low';
+                    else if (value > 100) status = 'Elevated';
+                    document.getElementById('overlayStatus').textContent = status;
+                    break;
+
+                case 'F':  // Finger presence
+                    fingerPresent = (value === 1);
+                    if (fingerPresent) {
+                        document.getElementById('statusText').textContent = 'Measuring heartbeat...';
+                    } else {
+                        document.getElementById('statusText').textContent = 'Place finger on sensor';
+                        document.getElementById('overlayBPM').textContent = '--';
+                        document.getElementById('overlayStatus').textContent = 'Waiting';
+                        document.getElementById('instantBPM').textContent = '--';
+                        document.getElementById('avgBPM').textContent = '--';
+                    }
+                    break;
+
+                case 'ERROR':
+                    console.error('Arduino error:', parts.slice(1).join(','));
+                    break;
+            }
+        }
+
+        function updateFrequencyBuffer(waveformValue) {
+            // Simple conversion: treat waveform amplitude as frequency distribution
+            // This creates a spectrum-like effect from the heartbeat waveform
+
+            // Shift buffer left
+            for (let i = 0; i < FREQUENCY_BINS - 1; i++) {
+                frequencyBuffer[i] = frequencyBuffer[i + 1];
+            }
+
+            // Add new value (with some randomization for visual variety)
+            const baseValue = waveformValue;
+            frequencyBuffer[FREQUENCY_BINS - 1] = baseValue;
+
+            // Create frequency-like distribution
+            for (let i = 0; i < FREQUENCY_BINS; i++) {
+                const distance = Math.abs(i - FREQUENCY_BINS / 2);
+                const falloff = Math.exp(-distance / 30);
+                frequencyBuffer[i] = Math.floor(waveformValue * falloff * (0.8 + Math.random() * 0.4));
+            }
+        }
+
+        // UI Controls
+        document.getElementById('connectBtn').addEventListener('click', connectArduino);
+        document.getElementById('disconnectBtn').addEventListener('click', disconnectArduino);
+
+        // Theme toggle
+        document.getElementById('contrastToggle').addEventListener('click', () => {
+            const currentTheme = document.body.dataset.theme;
+            const newTheme = currentTheme === 'default' ? 'high-contrast' : 'default';
+            document.body.dataset.theme = newTheme;
+            document.getElementById('contrastToggle').classList.toggle('active');
+        });
+
+        // Reduced motion toggle
+        document.getElementById('motionToggle').addEventListener('click', () => {
+            const current = document.body.dataset.reducedMotion === 'true';
+            document.body.dataset.reducedMotion = !current;
+            document.getElementById('motionToggle').classList.toggle('active');
+        });
+
+        // Accordion functionality
+        document.querySelectorAll('.accordion-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const section = header.parentElement;
+                section.classList.toggle('collapsed');
+
+                const isExpanded = !section.classList.contains('collapsed');
+                header.setAttribute('aria-expanded', isExpanded);
+            });
+
+            header.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    header.click();
+                }
+            });
+        });
+
+        // Mode switching
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentMode = e.target.dataset.mode;
+            });
+        });
+
+        // Parameter controls
+        document.getElementById('sensitivity').addEventListener('input', (e) => {
+            sensitivity = parseFloat(e.target.value);
+            document.getElementById('sensitivityValue').textContent = sensitivity.toFixed(1) + 'x';
+        });
+
+        document.getElementById('colorStart').addEventListener('input', (e) => {
+            colorHueStart = parseInt(e.target.value);
+            document.getElementById('colorStartValue').style.background = `hsl(${colorHueStart}, 70%, 60%)`;
+        });
+
+        document.getElementById('colorEnd').addEventListener('input', (e) => {
+            colorHueEnd = parseInt(e.target.value);
+            document.getElementById('colorEndValue').style.background = `hsl(${colorHueEnd}, 70%, 60%)`;
+        });
+
+        // Visualization functions
+        function drawWaveform() {
+            if (waveformBuffer.length < 2) return;
+
+            const width = canvas.width / window.devicePixelRatio;
+            const height = canvas.height / window.devicePixelRatio;
+
+            ctx.fillStyle = 'rgba(10, 14, 20, 0.15)';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim();
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = ctx.strokeStyle;
+            ctx.beginPath();
+
+            const sliceWidth = width / WAVEFORM_SIZE;
+
+            for (let i = 0; i < waveformBuffer.length; i++) {
+                const v = (waveformBuffer[i] - 128) / 128.0;
+                const y = (height / 2) - (v * (height / 2) * sensitivity);
+                const x = i * sliceWidth;
+
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        function drawFrequencySpectrum() {
+            const width = canvas.width / window.devicePixelRatio;
+            const height = canvas.height / window.devicePixelRatio;
+
+            ctx.fillStyle = 'rgba(10, 14, 20, 0.15)';
+            ctx.fillRect(0, 0, width, height);
+
+            const barWidth = width / FREQUENCY_BINS;
+
+            for (let i = 0; i < FREQUENCY_BINS; i++) {
+                const barHeight = (frequencyBuffer[i] / 255) * height * sensitivity;
+                const t = i / FREQUENCY_BINS;
+                const hue = colorHueStart + (colorHueEnd - colorHueStart) * t;
+
+                ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
+                ctx.fillRect(i * barWidth, height - barHeight, barWidth - 1, barHeight);
+            }
+        }
+
+        function drawCircularSpectrum() {
+            const width = canvas.width / window.devicePixelRatio;
+            const height = canvas.height / window.devicePixelRatio;
+
+            ctx.fillStyle = 'rgba(10, 14, 20, 0.15)';
+            ctx.fillRect(0, 0, width, height);
+
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = Math.min(width, height) * 0.20;
+
+            // Draw grid circles
+            ctx.strokeStyle = 'rgba(0, 255, 200, 0.1)';
+            ctx.lineWidth = 1;
+            for (let r = radius * 0.5; r <= radius; r += radius * 0.25) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            const lineCount = FREQUENCY_BINS * 2;
+
+            for (let i = 0; i < lineCount; i++) {
+                const dataIndex = Math.floor((i / lineCount) * FREQUENCY_BINS);
+                const angle = (i / lineCount) * Math.PI * 2;
+                const normalizedValue = frequencyBuffer[dataIndex] / 255;
+
+                for (let layer = 0; layer < 3; layer++) {
+                    const layerRadius = radius * (0.7 + layer * 0.15);
+                    const barLength = (layerRadius * 0.15) + (normalizedValue * layerRadius * sensitivity * (1 - layer * 0.2));
+
+                    const x1 = centerX + Math.cos(angle) * layerRadius;
+                    const y1 = centerY + Math.sin(angle) * layerRadius;
+                    const x2 = centerX + Math.cos(angle) * (layerRadius + barLength);
+                    const y2 = centerY + Math.sin(angle) * (layerRadius + barLength);
+
+                    const t = i / lineCount;
+                    const hue = colorHueStart + (colorHueEnd - colorHueStart) * t;
+                    const opacity = (0.4 + normalizedValue * 0.6) * (1 - layer * 0.3);
+
+                    ctx.strokeStyle = `hsla(${hue}, 70%, 60%, ${opacity})`;
+                    ctx.lineWidth = 1 + normalizedValue * 2;
+
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+                }
+            }
+
+            // Pulse center
+            const avgAmplitude = frequencyBuffer.reduce((sum, val) => sum + val, 0) / FREQUENCY_BINS / 255;
+            const pulseRadius = radius * 0.3 * (0.8 + avgAmplitude * 0.4);
+
+            ctx.shadowBlur = 15 * avgAmplitude;
+            ctx.shadowColor = `hsl(${colorHueStart}, 70%, 60%)`;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, pulseRadius * 0.5, 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${colorHueStart}, 70%, 60%, ${avgAmplitude * 0.3})`;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        function drawParticleFlow() {
+            const width = canvas.width / window.devicePixelRatio;
+            const height = canvas.height / window.devicePixelRatio;
+
+            ctx.fillStyle = 'rgba(10, 14, 20, 0.1)';
+            ctx.fillRect(0, 0, width, height);
+
+            particles.forEach(particle => {
+                particle.update(frequencyBuffer);
+                particle.draw();
+            });
+        }
+
+        function drawOscilloscope() {
+            const width = canvas.width / window.devicePixelRatio;
+            const height = canvas.height / window.devicePixelRatio;
+
+            // Add waveform to oscilloscope buffer
+            for (let i = 0; i < waveformBuffer.length; i += 4) {
+                const v = (waveformBuffer[i] - 128) / 128.0;
+                oscilloscopeBuffer.push(v);
+            }
+
+            while (oscilloscopeBuffer.length > OSCILLOSCOPE_BUFFER_SIZE) {
+                oscilloscopeBuffer.shift();
+            }
+
+            // Clear
+            ctx.fillStyle = '#0a0e14';
+            ctx.fillRect(0, 0, width, height);
+
+            // Draw grid
+            ctx.strokeStyle = 'rgba(0, 255, 200, 0.25)';
+            ctx.lineWidth = 0.5;
+
+            for (let i = 0; i <= 8; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, (height / 8) * i);
+                ctx.lineTo(width, (height / 8) * i);
+                ctx.stroke();
+            }
+
+            for (let i = 0; i <= 10; i++) {
+                ctx.beginPath();
+                ctx.moveTo((width / 10) * i, 0);
+                ctx.lineTo((width / 10) * i, height);
+                ctx.stroke();
+            }
+
+            // Center line
+            ctx.strokeStyle = 'rgba(0, 255, 200, 0.4)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(0, height / 2);
+            ctx.lineTo(width, height / 2);
+            ctx.stroke();
+
+            // Draw waveform with gradient
+            const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim();
+
+            for (let segment = 0; segment < 10; segment++) {
+                const startIdx = Math.floor(segment * oscilloscopeBuffer.length / 10);
+                const endIdx = Math.floor((segment + 1) * oscilloscopeBuffer.length / 10);
+                const opacity = 0.1 + (segment / 10) * 0.9;
+
+                ctx.strokeStyle = primaryColor.replace(')', `, ${opacity})`).replace('rgb', 'rgba');
+                ctx.lineWidth = 2.5;
+                ctx.shadowBlur = 15 * opacity;
+                ctx.shadowColor = primaryColor;
+                ctx.beginPath();
+
+                let firstPoint = true;
+                for (let i = startIdx; i < endIdx; i++) {
+                    const x = (i / oscilloscopeBuffer.length) * width;
+                    const v = oscilloscopeBuffer[i];
+                    const y = (height / 2) - (v * (height / 2) * sensitivity);
+
+                    if (firstPoint) {
+                        ctx.moveTo(x, y);
+                        firstPoint = false;
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+
+                ctx.stroke();
+            }
+
+            ctx.shadowBlur = 0;
+        }
+
+        // Main visualization loop
+        function visualize() {
+            animationId = requestAnimationFrame(visualize);
+
+            if (!isConnected) return;
+
+            switch (currentMode) {
+                case 'waveform':
+                    drawWaveform();
+                    break;
+                case 'frequency':
+                    drawFrequencySpectrum();
+                    break;
+                case 'circular':
+                    drawCircularSpectrum();
+                    break;
+                case 'particles':
+                    drawParticleFlow();
+                    break;
+                case 'oscilloscope':
+                    drawOscilloscope();
+                    break;
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+
+            switch(e.key) {
+                case ' ':
+                    e.preventDefault();
+                    if (!isConnected) {
+                        document.getElementById('connectBtn').click();
+                    } else {
+                        document.getElementById('disconnectBtn').click();
+                    }
+                    break;
+                case '1':
+                    document.querySelector('[data-mode="waveform"]').click();
+                    break;
+                case '2':
+                    document.querySelector('[data-mode="frequency"]').click();
+                    break;
+                case '3':
+                    document.querySelector('[data-mode="circular"]').click();
+                    break;
+                case '4':
+                    document.querySelector('[data-mode="particles"]').click();
+                    break;
+                case '5':
+                    document.querySelector('[data-mode="oscilloscope"]').click();
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>
