@@ -117,9 +117,11 @@ void loop() {
     baseline += (ir - baseline) * 0.005;
   }
 
-  // Beat = dip 3% below baseline. Recover = back within 1%.
-  float dipThreshold = baseline * 0.97;
-  float recoverThreshold = baseline * 0.99;
+  // Beat = dip 1% below baseline. Recover = back within 0.5%.
+  // (User's waveform log showed real dips are ~1.5% deep at ~98,000 IR:
+  //  drops of 1,000-1,800 counts. A 3% threshold would miss every beat.)
+  float dipThreshold = baseline * 0.99;
+  float recoverThreshold = baseline * 0.995;
 
   // ===== DIP (BEAT) DETECTION =====
   if (!inDip && ir < dipThreshold) {
