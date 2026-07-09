@@ -1,0 +1,548 @@
+<title>The Cardiac Conversation — a plate on the electrochemical loop of one heartbeat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    /* ---- LIGHT = aged-paper engraving (default) ---- */
+    --bg:        #ECE3CE;
+    --bg-2:      #E5DBC2;
+    --vignette:  rgba(60,45,25,.16);
+    --ink:       #2A2015;
+    --ink-2:     #5C4B36;
+    --ink-3:     #8A775C;
+    --rule:      rgba(42,32,21,.34);
+    --rule-soft: rgba(42,32,21,.16);
+    --rule-strong:rgba(42,32,21,.62);
+    --stipple:   rgba(42,32,21,.5);
+    --plate:     #EFE7D3;
+
+    --d-electrical:#A8452F;
+    --d-chemo:     #9C6B1E;
+    --d-afferent:  #157E5F;
+    --d-central:   #47539E;
+
+    --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, "Times New Roman", serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --maxw: 1080px;
+
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      /* ---- DARK = cyanotype blueprint ---- */
+      --bg:        #0E1D37;
+      --bg-2:      #0A162B;
+      --vignette:  rgba(0,0,0,.5);
+      --ink:       #E9E2CC;
+      --ink-2:     #AEB9CB;
+      --ink-3:     #7C88A0;
+      --rule:      rgba(233,226,204,.30);
+      --rule-soft: rgba(233,226,204,.13);
+      --rule-strong:rgba(233,226,204,.6);
+      --stipple:   rgba(233,226,204,.5);
+      --plate:     #112240;
+
+      --d-electrical:#D06E7C;
+      --d-chemo:     #B4862F;
+      --d-afferent:  #269C82;
+      --d-central:   #7E8FD8;
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#ECE3CE;--bg-2:#E5DBC2;--vignette:rgba(60,45,25,.16);
+    --ink:#2A2015;--ink-2:#5C4B36;--ink-3:#8A775C;
+    --rule:rgba(42,32,21,.34);--rule-soft:rgba(42,32,21,.16);--rule-strong:rgba(42,32,21,.62);
+    --stipple:rgba(42,32,21,.5);--plate:#EFE7D3;
+    --d-electrical:#A8452F;--d-chemo:#9C6B1E;--d-afferent:#157E5F;--d-central:#47539E;
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E1D37;--bg-2:#0A162B;--vignette:rgba(0,0,0,.5);
+    --ink:#E9E2CC;--ink-2:#AEB9CB;--ink-3:#7C88A0;
+    --rule:rgba(233,226,204,.30);--rule-soft:rgba(233,226,204,.13);--rule-strong:rgba(233,226,204,.6);
+    --stipple:rgba(233,226,204,.5);--plate:#112240;
+    --d-electrical:#D06E7C;--d-chemo:#B4862F;--d-afferent:#269C82;--d-central:#7E8FD8;
+  }
+
+  *{ box-sizing:border-box; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0;
+    background:
+      radial-gradient(140% 120% at 50% 0%, transparent 58%, var(--vignette)),
+      var(--bg);
+    color:var(--ink);
+    font-family:var(--serif);
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  /* faint stipple grain over the whole plate */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image: radial-gradient(currentColor .6px, transparent .7px);
+    background-size:7px 7px;
+    color:var(--ink);
+    opacity:.05;
+  }
+
+  .plate{
+    position:relative; z-index:1;
+    max-width:var(--maxw); margin:34px auto; padding:clamp(22px,4vw,52px);
+    background:var(--plate);
+    box-shadow:0 24px 70px -30px rgba(0,0,0,.55);
+    outline:1px solid var(--rule);
+    outline-offset:-9px;
+  }
+  .plate::after{
+    content:""; position:absolute; inset:16px; pointer-events:none;
+    border:1px solid var(--rule-soft);
+  }
+
+  .eyebrow{
+    font-family:var(--mono); font-size:11px; letter-spacing:.42em;
+    text-transform:uppercase; color:var(--ink-3); margin:0;
+  }
+  .rule-h{ height:1px; background:var(--rule); border:0; margin:0; }
+  .rule-double{ border:0; height:4px; border-top:1px solid var(--rule-strong); border-bottom:1px solid var(--rule); margin:0; }
+
+  /* ---------- CARTOUCHE ---------- */
+  .cartouche{ text-align:center; display:flex; flex-direction:column; gap:14px; align-items:center; padding-bottom:26px; }
+  .plate-no{ font-family:var(--mono); font-size:11px; letter-spacing:.34em; text-transform:uppercase; color:var(--ink-3); }
+  h1{
+    margin:0; font-weight:400; letter-spacing:.02em; line-height:1.05;
+    font-size:clamp(34px,6.2vw,66px); text-wrap:balance;
+    font-variant:small-caps;
+  }
+  .subtitle{
+    margin:0; font-style:italic; color:var(--ink-2);
+    font-size:clamp(16px,2.1vw,21px); max-width:56ch; text-wrap:balance;
+  }
+  .flourish{ display:flex; align-items:center; gap:14px; color:var(--ink-3); margin-top:2px; }
+  .flourish .ln{ width:64px; height:1px; background:var(--rule-strong); }
+  .flourish .dot{ width:5px; height:5px; transform:rotate(45deg); background:var(--ink-3); }
+
+  /* ---------- FIGURE SCAFFOLD ---------- */
+  figure{ margin:0; padding:40px 0; }
+  .fig-cap{ display:flex; gap:10px; align-items:baseline; margin:0 0 6px; }
+  .fig-no{ font-family:var(--mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--ink-3); white-space:nowrap; }
+  .fig-title{ font-size:clamp(19px,2.6vw,25px); font-weight:400; margin:0; letter-spacing:.01em; }
+  .fig-note{ margin:8px 0 22px; font-style:italic; color:var(--ink-2); font-size:15.5px; max-width:70ch; }
+
+  /* ---------- FIG 1 · trace ---------- */
+  .trace-frame{ position:relative; border:1px solid var(--rule); background:transparent; }
+  .trace-frame::after{ content:""; position:absolute; inset:6px; border:1px solid var(--rule-soft); pointer-events:none; }
+  #ecg{ display:block; width:100%; height:160px; }
+  .trace-meta{ position:absolute; left:16px; top:12px; display:flex; align-items:baseline; gap:9px; }
+  .bpm{ font-size:30px; letter-spacing:.01em; font-variant-numeric:tabular-nums; }
+  .bpm-lab{ font-family:var(--mono); font-size:10px; letter-spacing:.24em; text-transform:uppercase; color:var(--ink-3); }
+  .trace-tag{ position:absolute; right:16px; top:14px; font-style:italic; color:var(--ink-3); font-size:13px; }
+
+  /* ---------- FIG 2 · loop ---------- */
+  .loop-layout{ display:grid; grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr); gap:34px; align-items:center; }
+  .ring-box{ position:relative; }
+  .ring-box svg{ width:100%; height:auto; display:block; overflow:visible; }
+  .ring-center{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; pointer-events:none; }
+  .ring-center .rc-lab{ font-family:var(--mono); font-size:9.5px; letter-spacing:.24em; text-transform:uppercase; color:var(--ink-3); margin-top:8px; }
+  .ring-center .rc-cyc{ font-style:italic; color:var(--ink-2); font-size:14px; }
+
+  .node-hit{ cursor:pointer; }
+  .node-hit:focus{ outline:none; }
+  .node-hit:focus-visible .nfocus{ opacity:1; }
+
+  /* detail card — engraved key */
+  .detail{ position:relative; border:1px solid var(--rule); padding:26px 26px 24px; min-height:320px; }
+  .detail::after{ content:""; position:absolute; inset:6px; border:1px solid var(--rule-soft); pointer-events:none; }
+  .d-top{ display:flex; align-items:center; gap:12px; }
+  .d-num{ font-family:var(--mono); font-size:11px; letter-spacing:.22em; color:var(--ink-3); }
+  .d-chip{ margin-left:auto; display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-2); }
+  .d-chip .gl{ width:22px; height:0; border-top-width:2px; border-top-style:solid; border-color:var(--accent,var(--ink)); }
+  .d-title{ font-size:clamp(22px,2.8vw,29px); font-weight:400; letter-spacing:.01em; margin:15px 0 0; line-height:1.14; text-wrap:balance; }
+  .d-title .amp{ color:var(--accent); font-style:italic; }
+  .d-body{ color:var(--ink-2); font-size:16px; margin:12px 0 0; }
+  .d-timing{ margin-top:20px; padding-top:15px; border-top:1px solid var(--rule); display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .t-lab{ font-family:var(--mono); font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--ink-3); }
+  .t-val{ font-style:italic; color:var(--ink); font-size:15px; font-variant-numeric:tabular-nums; }
+  .mini{ position:relative; height:8px; flex:1 1 120px; min-width:120px; border:1px solid var(--rule); }
+  .mini span{ position:absolute; top:0; bottom:0; background-image:repeating-linear-gradient(45deg, var(--accent) 0 1px, transparent 1px 4px); border-left:1px solid var(--accent); border-right:1px solid var(--accent); }
+
+  /* ---------- KEY / legend ---------- */
+  .key{ margin-top:30px; }
+  .key-h{ font-family:var(--mono); font-size:10.5px; letter-spacing:.3em; text-transform:uppercase; color:var(--ink-3); margin:0 0 12px; }
+  .key-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px 22px; }
+  .key-item{ display:flex; align-items:center; gap:11px; font-size:14px; color:var(--ink-2); }
+  .key-item .samp{ width:34px; height:12px; flex:none; position:relative; }
+  .key-item .samp i{ position:absolute; left:0; right:0; top:50%; border-top-width:2px; border-top-style:solid; border-color:var(--c); }
+  .key-item b{ color:var(--ink); font-weight:400; font-style:italic; }
+
+  /* ---------- FIG 3 · cycle chart ---------- */
+  .tl-box{ border:1px solid var(--rule); padding:24px 20px 16px; overflow-x:auto; position:relative; }
+  .tl-box::after{ content:""; position:absolute; inset:6px; border:1px solid var(--rule-soft); pointer-events:none; }
+  .tl-inner{ min-width:660px; position:relative; }
+  .tl-row{ display:grid; grid-template-columns:220px 1fr; align-items:center; gap:16px; padding:6px 0; }
+  .tl-name{ font-size:14px; color:var(--ink-2); display:flex; align-items:center; gap:9px; }
+  .tl-name .rn{ font-family:var(--mono); font-size:11px; color:var(--ink-3); }
+  .tl-name b{ color:var(--ink); font-weight:400; }
+  .tl-track{ position:relative; height:22px; }
+  .tl-track .gl{ position:absolute; top:-3px; bottom:-3px; width:1px; background:var(--rule-soft); }
+  .tl-bar{
+    position:absolute; top:4px; bottom:4px;
+    background-image:repeating-linear-gradient(45deg, var(--c) 0 1px, transparent 1px 5px);
+    border:1px solid var(--c);
+  }
+  .tl-bar .cap-l, .tl-bar .cap-r{ position:absolute; top:-4px; bottom:-4px; width:1px; background:var(--c); }
+  .tl-bar .cap-l{ left:0; } .tl-bar .cap-r{ right:0; }
+  .tl-axis{ display:grid; grid-template-columns:220px 1fr; gap:16px; margin-top:8px; }
+  .tl-ticks{ position:relative; height:22px; font-family:var(--mono); font-size:11px; color:var(--ink-3); }
+  .tl-ticks .tk{ position:absolute; transform:translateX(-50%); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .tl-ticks .tk::before{ content:""; position:absolute; left:50%; top:-7px; width:1px; height:5px; background:var(--rule-strong); }
+  .tl-unit{ text-align:right; font-style:italic; color:var(--ink-3); font-size:12px; margin-top:2px; }
+
+  /* ---------- COLOPHON / thesis ---------- */
+  .colophon{ text-align:center; padding:48px 0 8px; display:flex; flex-direction:column; align-items:center; gap:20px; }
+  .thesis{
+    font-style:italic; font-size:clamp(21px,3.4vw,33px); line-height:1.34;
+    letter-spacing:.01em; margin:0; max-width:24ch; text-wrap:balance;
+  }
+  .chain{ font-family:var(--mono); font-size:11px; letter-spacing:.16em; color:var(--ink-3); text-transform:uppercase; }
+  .imprint{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px 20px; margin-top:26px; font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; color:var(--ink-3); }
+
+  @media (max-width:820px){
+    .loop-layout{ grid-template-columns:1fr; gap:26px; }
+    .ring-box{ max-width:440px; margin:0 auto; width:100%; }
+    .plate{ margin:14px; padding:22px 18px; }
+  }
+  @media (prefers-reduced-motion:reduce){ *{ animation:none !important; } }
+</style>
+
+<div class="plate">
+
+  <div class="cartouche">
+    <span class="plate-no">Plate I · The Heart–Brain Axis</span>
+    <p class="eyebrow">A study in electrochemical geometry</p>
+    <h1>The Cardiac Conversation</h1>
+    <p class="subtitle">On the passage of a single heartbeat — from a pacemaker cell to the cortex and back — traced as one continuous circuit.</p>
+    <div class="flourish"><span class="ln"></span><span class="dot"></span><span class="ln"></span></div>
+  </div>
+
+  <hr class="rule-double">
+
+  <figure>
+    <div class="fig-cap"><span class="fig-no">Fig. 1</span><h2 class="fig-title">The trace, made visible</h2></div>
+    <p class="fig-note">The beat drawn as its own record — a recurring depolarization, plotted against time.
+      What follows is the anatomy of the interval between two of these strokes.</p>
+    <div class="trace-frame">
+      <div class="trace-meta"><span class="bpm" id="bpm">72</span><span class="bpm-lab">beats · minute</span></div>
+      <span class="trace-tag">observed at rest</span>
+      <canvas id="ecg" aria-label="Engraved electrocardiogram trace"></canvas>
+    </div>
+  </figure>
+
+  <hr class="rule-h">
+
+  <figure>
+    <div class="fig-cap"><span class="fig-no">Fig. 2</span><h2 class="fig-title">The circuit of one beat</h2></div>
+    <p class="fig-note">Seven stations, each transmitting a wave to the next. The tracing point completes a
+      full revolution once per beat; the final station reaches back to tune the first. Hover a station to hold it.</p>
+
+    <div class="loop-layout">
+      <div class="ring-box">
+        <svg id="ring" viewBox="0 0 640 640" role="img" aria-label="Engraved circular diagram of the seven-stage electrochemical loop of a heartbeat"></svg>
+        <div class="ring-center">
+          <div class="rc-lab" style="margin-top:0">one cardiac cycle</div>
+          <div class="rc-cyc" id="rc-cyc">≈ 800 ms</div>
+        </div>
+      </div>
+
+      <div class="detail" id="detail" style="--accent:var(--d-electrical)">
+        <div class="d-top">
+          <span class="d-num" id="d-num">STATION I / VII</span>
+          <span class="d-chip"><span class="gl"></span><span id="d-domain">Myocardial electrical</span></span>
+        </div>
+        <h3 class="d-title" id="d-title">Pacemaker action potential</h3>
+        <p class="d-body" id="d-body">Sinoatrial-node cells depolarize of their own accord — the “funny” current and calcium channels set a spontaneous rhythm that becomes the tempo of every beat.</p>
+        <div class="d-timing">
+          <span class="t-lab">interval</span>
+          <span class="t-val" id="d-time">≈ 0–60 ms into the beat</span>
+          <span class="mini"><span id="d-mini" style="--accent:var(--d-electrical)"></span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="key">
+      <p class="key-h">Key · four domains of the signal</p>
+      <div class="key-grid" id="key"></div>
+    </div>
+  </figure>
+
+  <hr class="rule-h">
+
+  <figure>
+    <div class="fig-cap"><span class="fig-no">Fig. 3</span><h2 class="fig-title">The stations, laid upon one cycle</h2></div>
+    <p class="fig-note">Plotted against a single ~800 ms beat, the intervals overlap: contraction, sensing and
+      the cortical response share the same window. The overlap is the proof — this is a conversation, not a chain of dominoes.</p>
+    <div class="tl-box"><div class="tl-inner" id="timeline"></div></div>
+    <p class="tl-unit">milliseconds from sinoatrial depolarization · resting beat, 75 bpm</p>
+  </figure>
+
+  <hr class="rule-double">
+
+  <div class="colophon">
+    <p class="thesis">A heartbeat is a continuous electrochemical conversation, not an isolated mechanical event.</p>
+    <div class="flourish"><span class="ln"></span><span class="dot"></span><span class="ln"></span></div>
+    <p class="chain">cell · muscle · pressure · nerve · brainstem · cortex · vagus · beat</p>
+  </div>
+
+  <div class="imprint">
+    <span>Signal Exhibit — the pulse made audible &amp; visible</span>
+    <span>Conceptual plate · timings approximate</span>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion:reduce)").matches;
+  var SVGNS = "http://www.w3.org/2000/svg";
+  var CYCLE = 800;
+
+  var DOMAINS = [
+    { key:'electrical', label:'Myocardial electrical', gloss:'the spark',   dash:'none' },
+    { key:'chemo',      label:'Chemo-mechanical',      gloss:'the squeeze', dash:'2 3' },
+    { key:'afferent',   label:'Afferent neural',       gloss:'the sensing', dash:'6 3' },
+    { key:'central',    label:'Central & efferent',    gloss:'the mind',    dash:'1 4' }
+  ];
+  var domainMap = {}; DOMAINS.forEach(function(d){ domainMap[d.key]=d; });
+  function tint(k){ return 'var(--d-'+k+')'; }
+
+  var ROM = ['I','II','III','IV','V','VI','VII'];
+  var STAGES = [
+    { title:'Pacemaker action potential', short:'pacemaker', domain:'electrical',
+      body:'Sinoatrial-node cells depolarize of their own accord — the “funny” current (Iꜰ) and calcium channels set a spontaneous rhythm that becomes the tempo of every beat.',
+      t0:0, t1:60 },
+    { title:'Calcium wave in the myocytes', short:'calcium wave', domain:'chemo',
+      body:'The depolarization opens L-type channels; a single Ca²⁺ spark triggers calcium-induced release from the sarcoplasmic reticulum, and a wave of calcium sweeps each cell.',
+      t0:40, t1:150 },
+    { title:'ATP hydrolysis and contraction', short:'contraction', domain:'chemo',
+      body:'Calcium binds troponin; myosin heads split ATP and haul on actin. Chemical energy becomes mechanical force as millions of cells shorten at once.',
+      t0:120, t1:360 },
+    { title:'Pressure wave fires PIEZO channels', short:'baroreceptors', domain:'afferent',
+      body:'The ejection pressure wave stretches the arterial walls. PIEZO1/2 mechanoreceptors in baroreceptors and peripheral afferents convert that stretch directly into nerve impulses.',
+      t0:200, t1:340 },
+    { title:'Afferent signal to the brainstem', short:'brainstem', domain:'afferent',
+      body:'Volleys travel the vagus and glossopharyngeal nerves to the nucleus tractus solitarius — the brainstem’s ledger of every beat that arrives.',
+      t0:250, t1:390 },
+    { title:'Heartbeat-evoked potential', short:'cortex · HEP', domain:'central',
+      body:'The brainstem relays cardiac timing upward. The heartbeat-evoked potential is the cortical signature of the beat being registered — the moment the heart is, in effect, felt.',
+      t0:300, t1:600 },
+    { title:'Vagal efferent burst', short:'vagal return', domain:'central',
+      body:'The baroreflex answers: a vagal burst returns to the sinoatrial node and adjusts the very next cycle. The circuit closes, and the conversation begins again.',
+      t0:450, t1:800 }
+  ];
+  var N = STAGES.length;
+
+  /* ---------------- theme-aware ink for canvas ---------------- */
+  function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  var inkColor = cssVar('--ink') || '#2A2015';
+  var ruleColor = cssVar('--rule-soft') || 'rgba(0,0,0,.15)';
+  function refreshInk(){ inkColor = cssVar('--ink'); ruleColor = cssVar('--rule-soft'); }
+  if(window.matchMedia){ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', refreshInk); }
+  new MutationObserver(refreshInk).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+
+  /* ---------------- Fig 1 · ECG ---------------- */
+  (function ecg(){
+    var cv = document.getElementById('ecg'), ctx = cv.getContext('2d');
+    var dpr = Math.min(window.devicePixelRatio||1, 2), W=0, H=0;
+    function size(){ var r=cv.getBoundingClientRect(); W=r.width; H=r.height; cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); ctx.setTransform(dpr,0,0,dpr,0,0); }
+    size(); window.addEventListener('resize', size);
+
+    function g(p,c,w,a){ var d=(p-c)/w; return a*Math.exp(-d*d); }
+    function wave(p){ return g(p,0.18,0.026,0.11)+g(p,0.365,0.008,-0.10)+g(p,0.40,0.010,1.0)+g(p,0.435,0.010,-0.24)+g(p,0.62,0.045,0.30); }
+
+    var beatMs = CYCLE, pxPerMs = 0.16, t0 = performance.now();
+
+    function grid(){
+      ctx.clearRect(0,0,W,H);
+      ctx.strokeStyle = ruleColor; ctx.lineWidth = 1;
+      ctx.beginPath();
+      for(var x=0;x<W;x+=20){ ctx.moveTo(x,0); ctx.lineTo(x,H); }
+      for(var y=0;y<H;y+=20){ ctx.moveTo(0,y); ctx.lineTo(W,y); }
+      ctx.stroke();
+    }
+    function line(shift){
+      var mid=H*0.58, amp=H*0.40;
+      ctx.strokeStyle=inkColor; ctx.lineWidth=1.25; ctx.lineJoin='round'; ctx.lineCap='round';
+      ctx.beginPath();
+      for(var x=0;x<=W;x++){ var phase=((x/pxPerMs)+shift)%beatMs/beatMs; var yy=mid-wave(phase)*amp; if(x===0)ctx.moveTo(x,yy); else ctx.lineTo(x,yy); }
+      ctx.stroke();
+    }
+    function frame(now){ grid(); line(reduce?0:(now-t0)); if(!reduce) requestAnimationFrame(frame); }
+    if(reduce){ grid(); line(0); } else requestAnimationFrame(frame);
+
+    var bpmEl=document.getElementById('bpm');
+    if(reduce){ bpmEl.textContent=75; }
+    else setInterval(function(){ bpmEl.textContent = 70 + Math.round(Math.sin(performance.now()/6000)*4 + (Math.random()*2-1)); }, 1500);
+  })();
+
+  /* ---------------- Fig 2 · ring ---------------- */
+  var ring = document.getElementById('ring');
+  var cx=320, cy=320, R=210, nodeR=15;
+  function mk(t,a){ var e=document.createElementNS(SVGNS,t); for(var k in a) e.setAttribute(k,a[k]); return e; }
+  function pol(r,ang){ return [cx+r*Math.cos(ang), cy+r*Math.sin(ang)]; }
+  function angOf(i){ return -Math.PI/2 + i*(2*Math.PI/N); }
+  function arcPath(r, a0, a1){
+    var p0=pol(r,a0), p1=pol(r,a1);
+    var large = Math.abs(a1-a0) > Math.PI ? 1 : 0;
+    var sweep = a1>a0 ? 1 : 0;
+    return 'M '+p0[0].toFixed(2)+' '+p0[1].toFixed(2)+' A '+r+' '+r+' 0 '+large+' '+sweep+' '+p1[0].toFixed(2)+' '+p1[1].toFixed(2);
+  }
+
+  // concentric guide circles (engraved construction)
+  ring.appendChild(mk('circle',{cx:cx,cy:cy,r:R,fill:'none',stroke:'var(--rule)','stroke-width':1}));
+  ring.appendChild(mk('circle',{cx:cx,cy:cy,r:R-13,fill:'none',stroke:'var(--rule-soft)','stroke-width':1}));
+  ring.appendChild(mk('circle',{cx:cx,cy:cy,r:70,fill:'none',stroke:'var(--rule-soft)','stroke-width':1}));
+
+  // central medallion: clean plate-colored disc behind the label
+  ring.appendChild(mk('circle',{cx:cx,cy:cy,r:60,fill:'var(--plate)',stroke:'none'}));
+  ring.appendChild(mk('circle',{cx:cx,cy:cy,r:60,fill:'none',stroke:'var(--rule-soft)','stroke-width':1}));
+
+  var nodeEls=[];
+  for(var i=0;i<N;i++){
+    var ang=angOf(i), p=pol(R,ang), c=tint(STAGES[i].domain), dash=domainMap[STAGES[i].domain].dash;
+
+    // radial construction line from inner circle to node
+    var inner=pol(74,ang), edge=pol(R-nodeR-3,ang);
+    ring.appendChild(mk('line',{x1:inner[0],y1:inner[1],x2:edge[0],y2:edge[1],stroke:'var(--rule-soft)','stroke-width':1}));
+
+    // outward wavefront arcs (the signal propagating), tinted by domain
+    for(var w=0; w<3; w++){
+      var rr = nodeR + 9 + w*7;
+      var pathEl = mk('path',{d:arcPath0(p,rr,ang), fill:'none','stroke-width': (1.4 - w*0.25).toFixed(2), 'stroke-linecap':'round', opacity:(0.9 - w*0.18).toFixed(2)});
+      pathEl.style.stroke=c;
+      if(dash!=='none') pathEl.setAttribute('stroke-dasharray', dash);
+      ring.appendChild(pathEl);
+    }
+
+    // leader to label
+    var lead0=pol(R+nodeR+4,ang), lead1=pol(R+nodeR+16,ang);
+    ring.appendChild(mk('line',{x1:lead0[0],y1:lead0[1],x2:lead1[0],y2:lead1[1],stroke:'var(--rule)','stroke-width':1}));
+
+    // label
+    var lp=pol(R+nodeR+22,ang);
+    var cosr=Math.cos(ang);
+    var anchor = cosr>0.28?'start':(cosr<-0.28?'end':'middle');
+    var lt=mk('text',{x:lp[0].toFixed(1),y:(lp[1]+3).toFixed(1),'text-anchor':anchor,fill:'var(--ink-2)','font-size':'13','font-style':'italic','font-family':'var(--serif)'});
+    lt.style.pointerEvents='none'; lt.textContent=STAGES[i].short;
+    ring.appendChild(lt);
+
+    // node group
+    var gnode=mk('g',{class:'node-hit',tabindex:'0',role:'button','aria-label':'Station '+ROM[i]+': '+STAGES[i].title});
+    var nfocus=mk('circle',{class:'nfocus',cx:p[0],cy:p[1],r:nodeR+6,fill:'none',stroke:'var(--ink)','stroke-width':1,opacity:0});
+    var disc=mk('circle',{cx:p[0],cy:p[1],r:nodeR,fill:'var(--plate)','stroke-width':1.6});
+    disc.style.stroke=c;
+    var num=mk('text',{x:p[0],y:(p[1]+4).toFixed(1),'text-anchor':'middle','font-size':'12','font-family':'var(--serif)',fill:'var(--ink)'});
+    num.textContent=ROM[i];
+    gnode.appendChild(nfocus); gnode.appendChild(disc); gnode.appendChild(num);
+    ring.appendChild(gnode);
+
+    (function(idx){
+      gnode.addEventListener('mouseenter',function(){ pin(idx); });
+      gnode.addEventListener('focus',function(){ pin(idx); });
+      gnode.addEventListener('click',function(){ pin(idx); });
+      gnode.addEventListener('mouseleave',unpin);
+      gnode.addEventListener('blur',unpin);
+    })(i);
+
+    nodeEls.push({disc:disc,ang:ang,p:p});
+  }
+
+  // wavefront arcs centered at a node point, opening outward along ang
+  function arcPath0(center, r, ang){
+    var spread=0.85; // radians each side
+    var a0=ang-spread, a1=ang+spread;
+    var p0=[center[0]+r*Math.cos(a0), center[1]+r*Math.sin(a0)];
+    var p1=[center[0]+r*Math.cos(a1), center[1]+r*Math.sin(a1)];
+    return 'M '+p0[0].toFixed(2)+' '+p0[1].toFixed(2)+' A '+r+' '+r+' 0 0 1 '+p1[0].toFixed(2)+' '+p1[1].toFixed(2);
+  }
+
+  // traveling tracer (open circle with cross-tick)
+  var tracer=mk('g',{opacity:reduce?0:1});
+  var tdisc=mk('circle',{r:7,fill:'var(--plate)','stroke-width':1.4});
+  var tcx=mk('line',{x1:-9,y1:0,x2:9,y2:0,'stroke-width':1});
+  var tcy=mk('line',{x1:0,y1:-9,x2:0,y2:9,'stroke-width':1});
+  tracer.appendChild(tcx); tracer.appendChild(tcy); tracer.appendChild(tdisc);
+  ring.appendChild(tracer);
+
+  /* ---------------- detail card ---------------- */
+  var dNum=document.getElementById('d-num'), dDom=document.getElementById('d-domain'),
+      dTitle=document.getElementById('d-title'), dBody=document.getElementById('d-body'),
+      dTime=document.getElementById('d-time'), dMini=document.getElementById('d-mini'),
+      detail=document.getElementById('detail');
+  var active=-1, pinned=false;
+  function show(idx){
+    if(idx===active) return;
+    var s=STAGES[idx], d=domainMap[s.domain], c=tint(s.domain);
+    detail.style.setProperty('--accent',c);
+    dMini.style.setProperty('--accent',c);
+    dNum.textContent='STATION '+ROM[idx]+' / VII';
+    dDom.textContent=d.label;
+    dTitle.textContent=s.title;
+    dBody.textContent=s.body;
+    dTime.textContent='≈ '+s.t0+'–'+s.t1+' ms into the beat';
+    dMini.style.left=(s.t0/CYCLE*100)+'%';
+    dMini.style.width=Math.max(3,(s.t1-s.t0)/CYCLE*100)+'%';
+    nodeEls.forEach(function(ne,i){ ne.disc.setAttribute('stroke-width', i===idx?3:1.6); });
+    active=idx;
+  }
+  function pin(idx){ pinned=true; show(idx); }
+  function unpin(){ pinned=false; }
+  show(0);
+
+  /* ---------------- tracer animation ---------------- */
+  if(!reduce){
+    var speed=(2*Math.PI)/6000; // rad per ms → ~6s per lap
+    var start=performance.now();
+    (function loop(now){
+      var a=-Math.PI/2 + ((now-start)*speed)%(2*Math.PI);
+      var p=pol(R,a);
+      tracer.setAttribute('transform','translate('+p[0].toFixed(2)+','+p[1].toFixed(2)+')');
+      var frac=((a+Math.PI/2)/(2*Math.PI));
+      frac=(frac%1+1)%1;
+      var seg=Math.floor(frac*N)%N;
+      var c=tint(STAGES[seg].domain);
+      tdisc.style.stroke=c; tcx.style.stroke=c; tcy.style.stroke=c;
+      if(!pinned) show(seg);
+      requestAnimationFrame(loop);
+    })(start);
+  }
+
+  /* ---------------- key ---------------- */
+  var key=document.getElementById('key');
+  DOMAINS.forEach(function(d){
+    var el=document.createElement('div'); el.className='key-item'; el.style.setProperty('--c',tint(d.key));
+    var dashCss = d.dash==='none' ? '' : 'border-top-style:dashed;';
+    el.innerHTML='<span class="samp"><i style="'+dashCss+'"></i></span><span><b>'+d.label+'</b> — '+d.gloss+'</span>';
+    key.appendChild(el);
+  });
+
+  /* ---------------- Fig 3 · timeline ---------------- */
+  var tl=document.getElementById('timeline');
+  var ticks=[0,100,200,300,400,500,600,700,800];
+  STAGES.forEach(function(s,i){
+    var row=document.createElement('div'); row.className='tl-row'; row.style.setProperty('--c',tint(s.domain));
+    var name=document.createElement('div'); name.className='tl-name';
+    name.innerHTML='<span class="rn">'+ROM[i]+'</span><b>'+s.short+'</b>';
+    var track=document.createElement('div'); track.className='tl-track';
+    ticks.forEach(function(t){ var gl=document.createElement('div'); gl.className='gl'; gl.style.left=(t/CYCLE*100)+'%'; track.appendChild(gl); });
+    var bar=document.createElement('div'); bar.className='tl-bar';
+    bar.style.left=(s.t0/CYCLE*100)+'%'; bar.style.width=Math.max(1.4,(s.t1-s.t0)/CYCLE*100)+'%';
+    bar.title=s.title+' · '+s.t0+'–'+s.t1+' ms';
+    bar.innerHTML='<span class="cap-l"></span><span class="cap-r"></span>';
+    track.appendChild(bar); row.appendChild(name); row.appendChild(track); tl.appendChild(row);
+  });
+  var axis=document.createElement('div'); axis.className='tl-axis';
+  axis.appendChild(document.createElement('div'));
+  var tks=document.createElement('div'); tks.className='tl-ticks';
+  ticks.forEach(function(t){ var e=document.createElement('div'); e.className='tk'; e.style.left=(t/CYCLE*100)+'%'; e.textContent=t; tks.appendChild(e); });
+  axis.appendChild(tks); tl.appendChild(axis);
+})();
+</script>
