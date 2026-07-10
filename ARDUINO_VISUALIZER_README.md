@@ -89,7 +89,7 @@ Audio starts automatically when you connect to the Arduino. Controls in the **Pu
 
 - **Sound Mode**:
   - **Heartbeat Cascade** (default) — the four-layer cascade fires on every detected heartbeat, following your heart's actual rhythm
-  - **Tempo Poll** — a steady musical clock (default 90 BPM, adjustable 60–140) polls your average heart rate on each tick and plays a note from a minor pentatonic scale: higher reading = higher pitch and louder, no reading = rest. Musical timing stays steady while the data shapes the melody.
+  - **Tempo Poll** — a steady musical clock (default 90 BPM, adjustable down to 15 BPM = one poll per 4 seconds) polls your average heart rate on each tick and fires the same four-layer cascade, transposed along a pentatonic ladder: higher reading = whole cascade shifts up in pitch and gets louder, no reading = rest. Musical timing stays steady while the data shapes the sound.
 - **Music Tempo slider** — the Tempo Poll clock speed
 
 - **Enable/Disable Pulse Audio** (or press **A**) — mute/unmute the cascade
