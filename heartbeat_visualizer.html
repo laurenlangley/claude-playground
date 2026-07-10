@@ -645,6 +645,7 @@
                                 <button class="mode-btn" data-mode="circular">Circular Spectrum</button>
                                 <button class="mode-btn" data-mode="particles">Particle Flow</button>
                                 <button class="mode-btn" data-mode="oscilloscope">Oscilloscope</button>
+                                <button class="mode-btn" data-mode="ripples">Wave Ripples</button>
                             </div>
                         </div>
 
@@ -888,6 +889,16 @@
         let oscilloscopeBuffer = [];
         const OSCILLOSCOPE_BUFFER_SIZE = 2000;
 
+        // Wave-ripple state: each detected beat drops a ripple that
+        // expands outward like a stone in water
+        let ripples = [];
+        const MAX_RIPPLES = 14;
+
+        function spawnRipple(strength = 1) {
+            ripples.push({ radius: 0, life: 1, strength });
+            if (ripples.length > MAX_RIPPLES) ripples.shift();
+        }
+
         // Resize canvas
         function resizeCanvas() {
             canvas.width = canvas.offsetWidth * window.devicePixelRatio;
@@ -1028,6 +1039,7 @@
 
             isConnected = false;
             avgBPM = 0;
+            ripples = [];
             if (PulseSequencer.isRunning()) PulseSequencer.stop();
             document.getElementById('connectBtn').disabled = false;
             document.getElementById('disconnectBtn').disabled = true;
@@ -1087,6 +1099,8 @@
 
             // ===== SYNTH PROTOCOL (from pulse_dual_protocol.ino) =====
             if (line === 'BEAT') {
+                // Every beat drops a ripple (visual works with or without audio)
+                spawnRipple();
                 // Cascade mode plays per heartbeat; sequencer mode ignores
                 // beat timing and polls avgBPM on its own musical clock
                 if (audioEnabled && soundMode === 'cascade' && PulseAudio.isReady()) {
@@ -1561,6 +1575,59 @@
             ctx.shadowBlur = 0;
         }
 
+        // Wave Ripples — each heartbeat drops concentric arcs that
+        // expand outward and fade, like ripples on water. Reads best in
+        // the engraving themes as fine wavefront line-work.
+        function drawRipples() {
+            const width = canvas.width / window.devicePixelRatio;
+            const height = canvas.height / window.devicePixelRatio;
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const maxR = Math.hypot(width, height) / 2;
+
+            // Low-alpha wash leaves faint trails without smearing the arcs
+            ctx.fillStyle = fadeFill(isGeometric() ? 0.12 : 0.18);
+            ctx.fillRect(0, 0, width, height);
+
+            // Static engraving-plate guide rings
+            ctx.strokeStyle = accentColor(0.07);
+            ctx.lineWidth = 1;
+            for (let r = 44; r < maxR; r += 44) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // Source point at the center
+            ctx.fillStyle = seriesColor(0, 0.7);
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Expand and draw each ripple (newest last)
+            for (let i = ripples.length - 1; i >= 0; i--) {
+                const rp = ripples[i];
+                rp.radius += maxR * 0.007 * (1 + sensitivity * 0.35);
+                rp.life = 1 - rp.radius / maxR;
+                if (rp.life <= 0) { ripples.splice(i, 1); continue; }
+
+                // A few trailing concentric arcs give the water-ring look
+                for (let ring = 0; ring < 3; ring++) {
+                    const rr = rp.radius - ring * 15;
+                    if (rr <= 0) continue;
+                    const opacity = rp.life * (1 - ring * 0.3);
+                    ctx.strokeStyle = seriesColor(ring / 3, opacity);
+                    ctx.lineWidth = isGeometric() ? 1 : (2.2 - ring * 0.5);
+                    ctx.shadowBlur = glow(10 * rp.life);
+                    ctx.shadowColor = ctx.strokeStyle;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, rr, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+            ctx.shadowBlur = 0;
+        }
+
         // Main visualization loop
         function visualize() {
             animationId = requestAnimationFrame(visualize);
@@ -1589,6 +1656,9 @@
                     break;
                 case 'oscilloscope':
                     drawOscilloscope();
+                    break;
+                case 'ripples':
+                    drawRipples();
                     break;
             }
         }
@@ -1630,6 +1700,9 @@
                     break;
                 case '5':
                     document.querySelector('[data-mode="oscilloscope"]').click();
+                    break;
+                case '6':
+                    document.querySelector('[data-mode="ripples"]').click();
                     break;
             }
         });

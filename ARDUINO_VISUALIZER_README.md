@@ -114,13 +114,14 @@ The two geometric themes (Blueprint and Paper) draw everything as thin ink lines
 
 ## Visualization Modes
 
-The visualizer offers 5 different modes (press 1-5 to switch):
+The visualizer offers 6 different modes (press 1-6 to switch):
 
 1. **Waveform** (1) - Shows the raw heartbeat pulse wave
 2. **Frequency Spectrum** (2) - Bar graph frequency display
 3. **Circular Spectrum** (3) - Radial frequency visualization
 4. **Particle Flow** (4) - Particles rising with heartbeat
 5. **Oscilloscope** (5) - Medical-style scrolling waveform
+6. **Wave Ripples** (6) - Each detected beat drops concentric arcs that expand outward and fade like ripples on water; reads best in the Blueprint/Paper engraving themes as fine wavefront line-work. Beat-driven, so it animates in step with your actual heartbeats regardless of sound mode.
 
 ## Controls
 
