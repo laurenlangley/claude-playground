@@ -103,11 +103,14 @@ Note: Tone.js loads from a CDN, so the audio feature needs an internet connectio
 
 ## Themes
 
-The ◐ button in the header cycles through three themes:
+The ◐ button in the header cycles through four themes:
 
 1. **Neon** (default) — dark blue background with cyan/magenta accents and hue-gradient visualizations
 2. **High Contrast** — black background with bright cyan
-3. **Monotone** — pure black background with white lines and text; all visualizations render white-on-black (the color sliders have no effect in this theme)
+3. **Blueprint** — antique scientific line-geometry on a dark Prussian-navy ground: fine pale hairlines, no glow, engraving palette (madder / ochre / verdigris / indigo)
+4. **Paper** — the same engraved line-geometry on a light aged-sepia ground with dark ink line-work
+
+The two geometric themes (Blueprint and Paper) draw everything as thin ink lines with no neon bloom and cycle a fixed engraving palette across the visualization series, so the color sliders have no effect in those themes.
 
 ## Visualization Modes
 

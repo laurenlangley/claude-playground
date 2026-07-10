@@ -54,90 +54,128 @@
             --grid-color: rgba(0, 255, 255, 0.3);
         }
 
-        /* Monotone Theme — pure black background, white lines and text */
-        [data-theme="monotone"] {
-            --bg-primary: #000000;
-            --bg-secondary: #000000;
-            --bg-tertiary: #0d0d0d;
-            --color-primary: #ffffff;
-            --color-secondary: #ffffff;
-            --color-tertiary: #ffffff;
-            --color-heart: #ffffff;
-            --color-lung: #ffffff;
-            --text-primary: #ffffff;
-            --text-secondary: #999999;
-            --grid-color: rgba(255, 255, 255, 0.08);
+        /* ============================================================
+           Geometric Themes — antique scientific line-geometry.
+           Fine hairline engravings, no neon glow. Two variants:
+             blueprint = Prussian navy ground, pale ink line-work
+             paper     = aged sepia ground, dark ink line-work
+           Shared palette (madder/ochre/verdigris/indigo) cycles across
+           visualization series in place of the neon hue gradient.
+           ============================================================ */
+
+        /* --- Blueprint (dark) --- */
+        [data-theme="blueprint"] {
+            --bg-primary: #0d1f33;      /* Prussian navy */
+            --bg-secondary: #102640;
+            --bg-tertiary: #16324f;
+            --color-primary: #cdd9ec;   /* pale blueprint line-work */
+            --color-secondary: #D06E7C; /* madder */
+            --color-tertiary: #7E8FD8;  /* indigo */
+            --color-heart: #269C82;     /* verdigris */
+            --color-lung: #D06E7C;      /* madder */
+            --text-primary: #e4ebf5;
+            --text-secondary: #8ba0bd;
+            --grid-color: rgba(205, 217, 236, 0.12);
         }
 
-        [data-theme="monotone"] h1 {
+        /* --- Paper (light) --- */
+        [data-theme="paper"] {
+            --bg-primary: #ece3d0;      /* aged paper */
+            --bg-secondary: #e4d9c2;
+            --bg-tertiary: #dcceb2;
+            --color-primary: #3a3222;   /* dark ink line-work */
+            --color-secondary: #A8452F; /* madder */
+            --color-tertiary: #47539E;  /* indigo */
+            --color-heart: #157E5F;     /* verdigris */
+            --color-lung: #A8452F;      /* madder */
+            --text-primary: #2c2618;
+            --text-secondary: #6b5f47;
+            --grid-color: rgba(58, 50, 34, 0.12);
+        }
+
+        /* Shared geometric-theme chrome (both variants) */
+        [data-theme="blueprint"] h1,
+        [data-theme="paper"] h1 {
             background: none;
-            -webkit-text-fill-color: #ffffff;
+            -webkit-text-fill-color: var(--color-primary);
+            letter-spacing: 0.02em;
         }
 
-        [data-theme="monotone"] header {
-            border-bottom-color: rgba(255, 255, 255, 0.2);
+        [data-theme="blueprint"] header,
+        [data-theme="paper"] header {
+            border-bottom-color: var(--grid-color);
         }
 
-        [data-theme="monotone"] main {
-            background: rgba(255, 255, 255, 0.1);
+        [data-theme="blueprint"] main,
+        [data-theme="paper"] main {
+            background: var(--grid-color);
         }
 
-        [data-theme="monotone"] .controls-panel {
-            border-left-color: rgba(255, 255, 255, 0.15);
+        [data-theme="blueprint"] .controls-panel,
+        [data-theme="paper"] .controls-panel {
+            border-left-color: var(--grid-color);
         }
 
-        [data-theme="monotone"] .accordion-section {
-            border-color: rgba(255, 255, 255, 0.2);
+        [data-theme="blueprint"] .accordion-section,
+        [data-theme="paper"] .accordion-section {
+            border-color: var(--grid-color);
         }
 
-        [data-theme="monotone"] .accordion-header:hover {
-            background: rgba(255, 255, 255, 0.05);
+        [data-theme="blueprint"] button:not(.icon-button):not(.accordion-header),
+        [data-theme="paper"] button:not(.icon-button):not(.accordion-header) {
+            border-color: var(--color-primary);
+            opacity: 0.85;
         }
 
-        [data-theme="monotone"] button:not(.icon-button):not(.accordion-header) {
-            border-color: rgba(255, 255, 255, 0.3);
+        [data-theme="blueprint"] .status,
+        [data-theme="paper"] .status {
+            background: var(--grid-color);
+            border-left-color: var(--color-secondary);
         }
 
-        [data-theme="monotone"] button.active {
-            background: rgba(255, 255, 255, 0.1);
+        [data-theme="blueprint"] input[type="range"]::-webkit-slider-thumb,
+        [data-theme="paper"] input[type="range"]::-webkit-slider-thumb {
+            box-shadow: none;
+            border-radius: 0;   /* square engraved marker, not a glowing dot */
         }
 
-        [data-theme="monotone"] .status {
-            background: rgba(255, 255, 255, 0.05);
+        [data-theme="blueprint"] .info-overlay,
+        [data-theme="paper"] .info-overlay {
+            border-color: var(--color-primary);
+            backdrop-filter: none;
         }
 
-        [data-theme="monotone"] input[type="range"] {
-            background: rgba(255, 255, 255, 0.15);
+        [data-theme="blueprint"] .info-overlay {
+            background: rgba(13, 31, 51, 0.92);
         }
 
-        [data-theme="monotone"] input[type="range"]::-webkit-slider-thumb {
-            box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+        [data-theme="paper"] .info-overlay {
+            background: rgba(236, 227, 208, 0.92);
         }
 
-        [data-theme="monotone"] .info-overlay {
-            background: rgba(0, 0, 0, 0.9);
-            border-color: rgba(255, 255, 255, 0.4);
-        }
-
-        [data-theme="monotone"] .info-value {
+        /* No neon glow anywhere in the engraved themes */
+        [data-theme="blueprint"] .info-value,
+        [data-theme="paper"] .info-value {
             text-shadow: none;
         }
 
-        [data-theme="monotone"] .controls-panel::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
+        [data-theme="blueprint"] .status-indicator,
+        [data-theme="paper"] .status-indicator {
+            border-radius: 0;   /* tick mark, not a pulsing dot */
         }
 
-        [data-theme="monotone"] .controls-panel::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
+        [data-theme="blueprint"] .loading-overlay {
+            background: rgba(13, 31, 51, 0.95);
         }
 
-        [data-theme="monotone"] .loading-overlay {
-            background: rgba(0, 0, 0, 0.95);
+        [data-theme="paper"] .loading-overlay {
+            background: rgba(236, 227, 208, 0.95);
         }
 
         /* Overrides the select's inline border color */
-        [data-theme="monotone"] #chordSelect {
-            border-color: rgba(255, 255, 255, 0.3) !important;
+        [data-theme="blueprint"] #chordSelect,
+        [data-theme="paper"] #chordSelect {
+            border-color: var(--color-primary) !important;
         }
 
         * {
@@ -545,7 +583,7 @@
         <header>
             <h1>Heartbeat Visualizer</h1>
             <div class="header-controls">
-                <button class="icon-button" id="contrastToggle" title="Cycle Theme (Neon / High Contrast / Monotone)" aria-label="Cycle color theme">◐</button>
+                <button class="icon-button" id="contrastToggle" title="Cycle Theme (Neon / High Contrast / Blueprint / Paper)" aria-label="Cycle color theme">◐</button>
                 <button class="icon-button" id="motionToggle" title="Toggle Reduced Motion" aria-label="Toggle reduced motion">⏸</button>
             </div>
         </header>
@@ -788,24 +826,58 @@
         const canvas = document.getElementById('visualizer');
         const ctx = canvas.getContext('2d');
 
-        // Theme-aware canvas colors: monotone renders white-on-black,
-        // other themes keep the hue-gradient look
-        function isMonotone() {
-            return document.body.dataset.theme === 'monotone';
+        // Theme-aware canvas colors. The neon themes use a hue gradient;
+        // the geometric themes (blueprint/paper) draw thin ink lines in a
+        // fixed engraving palette with no glow.
+        const GEO_PALETTES = {
+            // madder, ochre, verdigris, indigo — pale ink on navy
+            blueprint: { ink: [205, 217, 236], ground: [13, 31, 51],
+                         series: ['#D06E7C', '#B4862F', '#269C82', '#7E8FD8'] },
+            // dark ink on aged paper
+            paper:     { ink: [58, 50, 34], ground: [236, 227, 208],
+                         series: ['#A8452F', '#9C6B1E', '#157E5F', '#47539E'] }
+        };
+
+        function geoPalette() {
+            return GEO_PALETTES[document.body.dataset.theme] || null;
+        }
+
+        function isGeometric() {
+            return !!geoPalette();
+        }
+
+        // Glow multiplier — 0 in geometric themes kills the neon bloom so
+        // strokes read as fine engraved hairlines
+        function glow(amount) {
+            return isGeometric() ? 0 : amount;
+        }
+
+        function hexToRgba(hex, opacity) {
+            const n = parseInt(hex.slice(1), 16);
+            return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${opacity})`;
         }
 
         function seriesColor(t, opacity = 1) {
-            if (isMonotone()) return `rgba(255, 255, 255, ${opacity})`;
+            const geo = geoPalette();
+            if (geo) {
+                const idx = Math.min(geo.series.length - 1,
+                    Math.floor(t * geo.series.length));
+                return hexToRgba(geo.series[idx], opacity);
+            }
             const hue = colorHueStart + (colorHueEnd - colorHueStart) * t;
             return `hsla(${hue}, 70%, 60%, ${opacity})`;
         }
 
         function fadeFill(alpha) {
-            return isMonotone() ? `rgba(0, 0, 0, ${alpha})` : `rgba(10, 14, 20, ${alpha})`;
+            const geo = geoPalette();
+            if (geo) return `rgba(${geo.ground.join(', ')}, ${alpha})`;
+            return `rgba(10, 14, 20, ${alpha})`;
         }
 
         function accentColor(alpha) {
-            return isMonotone() ? `rgba(255, 255, 255, ${alpha})` : `rgba(0, 255, 200, ${alpha})`;
+            const geo = geoPalette();
+            if (geo) return `rgba(${geo.ink.join(', ')}, ${alpha})`;
+            return `rgba(0, 255, 200, ${alpha})`;
         }
 
         // Particle system
@@ -1221,8 +1293,8 @@
             PulseAudio.setReverb(wet);
         });
 
-        // Theme toggle — cycles default (neon) → high-contrast → monotone
-        const THEMES = ['default', 'high-contrast', 'monotone'];
+        // Theme toggle — cycles neon → high-contrast → blueprint → paper
+        const THEMES = ['default', 'high-contrast', 'blueprint', 'paper'];
         document.getElementById('contrastToggle').addEventListener('click', () => {
             const current = THEMES.indexOf(document.body.dataset.theme);
             const newTheme = THEMES[(current + 1) % THEMES.length];
@@ -1290,9 +1362,9 @@
             ctx.fillStyle = fadeFill(0.15);
             ctx.fillRect(0, 0, width, height);
 
-            ctx.lineWidth = 2.5;
+            ctx.lineWidth = isGeometric() ? 1 : 2.5;   // hairline in engraved themes
             ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim();
-            ctx.shadowBlur = 12;
+            ctx.shadowBlur = glow(12);
             ctx.shadowColor = ctx.strokeStyle;
             ctx.beginPath();
 
@@ -1385,7 +1457,7 @@
             const avgAmplitude = frequencyBuffer.reduce((sum, val) => sum + val, 0) / FREQUENCY_BINS / 255;
             const pulseRadius = radius * 0.3 * (0.8 + avgAmplitude * 0.4);
 
-            ctx.shadowBlur = 15 * avgAmplitude;
+            ctx.shadowBlur = glow(15 * avgAmplitude);
             ctx.shadowColor = seriesColor(0);
             ctx.beginPath();
             ctx.arc(centerX, centerY, pulseRadius * 0.5, 0, Math.PI * 2);
@@ -1463,8 +1535,8 @@
                 // color format the theme variable resolves to
                 ctx.globalAlpha = opacity;
                 ctx.strokeStyle = primaryColor;
-                ctx.lineWidth = 2.5;
-                ctx.shadowBlur = 15 * opacity;
+                ctx.lineWidth = isGeometric() ? 1 : 2.5;
+                ctx.shadowBlur = glow(15 * opacity);
                 ctx.shadowColor = primaryColor;
                 ctx.beginPath();
 
