@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arduino Heartbeat Visualizer</title>
+    <title>Heartbeat Visualizer</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <script src="pulse_audio.js"></script>
     <script src="pulse_sequencer.js"></script>
@@ -52,6 +52,92 @@
             --color-primary: #00ffff;
             --text-primary: #ffffff;
             --grid-color: rgba(0, 255, 255, 0.3);
+        }
+
+        /* Monotone Theme — pure black background, white lines and text */
+        [data-theme="monotone"] {
+            --bg-primary: #000000;
+            --bg-secondary: #000000;
+            --bg-tertiary: #0d0d0d;
+            --color-primary: #ffffff;
+            --color-secondary: #ffffff;
+            --color-tertiary: #ffffff;
+            --color-heart: #ffffff;
+            --color-lung: #ffffff;
+            --text-primary: #ffffff;
+            --text-secondary: #999999;
+            --grid-color: rgba(255, 255, 255, 0.08);
+        }
+
+        [data-theme="monotone"] h1 {
+            background: none;
+            -webkit-text-fill-color: #ffffff;
+        }
+
+        [data-theme="monotone"] header {
+            border-bottom-color: rgba(255, 255, 255, 0.2);
+        }
+
+        [data-theme="monotone"] main {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        [data-theme="monotone"] .controls-panel {
+            border-left-color: rgba(255, 255, 255, 0.15);
+        }
+
+        [data-theme="monotone"] .accordion-section {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        [data-theme="monotone"] .accordion-header:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        [data-theme="monotone"] button:not(.icon-button):not(.accordion-header) {
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        [data-theme="monotone"] button.active {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        [data-theme="monotone"] .status {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        [data-theme="monotone"] input[type="range"] {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        [data-theme="monotone"] input[type="range"]::-webkit-slider-thumb {
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+        }
+
+        [data-theme="monotone"] .info-overlay {
+            background: rgba(0, 0, 0, 0.9);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        [data-theme="monotone"] .info-value {
+            text-shadow: none;
+        }
+
+        [data-theme="monotone"] .controls-panel::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        [data-theme="monotone"] .controls-panel::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        [data-theme="monotone"] .loading-overlay {
+            background: rgba(0, 0, 0, 0.95);
+        }
+
+        /* Overrides the select's inline border color */
+        [data-theme="monotone"] #chordSelect {
+            border-color: rgba(255, 255, 255, 0.3) !important;
         }
 
         * {
@@ -457,9 +543,9 @@
 
     <div class="container">
         <header>
-            <h1>Arduino Heartbeat Visualizer</h1>
+            <h1>Heartbeat Visualizer</h1>
             <div class="header-controls">
-                <button class="icon-button" id="contrastToggle" title="Toggle High Contrast" aria-label="Toggle high contrast mode">◐</button>
+                <button class="icon-button" id="contrastToggle" title="Cycle Theme (Neon / High Contrast / Monotone)" aria-label="Cycle color theme">◐</button>
                 <button class="icon-button" id="motionToggle" title="Toggle Reduced Motion" aria-label="Toggle reduced motion">⏸</button>
             </div>
         </header>
@@ -467,7 +553,7 @@
         <main>
             <div class="canvas-container">
                 <div class="loading-overlay" id="loadingOverlay">
-                    <div class="loading-text">Connect Arduino to begin</div>
+                    <div class="loading-text">Connect device to begin</div>
                 </div>
                 <canvas id="visualizer"></canvas>
                 <div class="info-overlay">
@@ -483,31 +569,25 @@
             </div>
 
             <aside class="controls-panel">
-                <!-- Arduino Connection Section -->
-                <div class="accordion-section" data-section="arduino-connection">
+                <!-- Connection Section
+                     Usage: flash the pulse_dual_protocol sketch to the
+                     sensor board, click Connect, pick the serial port,
+                     place a finger on the sensor. Full setup guide in
+                     ARDUINO_VISUALIZER_README.md. -->
+                <div class="accordion-section" data-section="connection">
                     <div class="accordion-header" role="button" tabindex="0" aria-expanded="true">
-                        <span class="accordion-title">Arduino Connection</span>
+                        <span class="accordion-title">Connection</span>
                         <span class="accordion-icon">▼</span>
                     </div>
                     <div class="accordion-content">
                         <div class="control-group">
                             <div class="button-group">
-                                <button id="connectBtn" class="primary">Connect to Arduino</button>
+                                <button id="connectBtn" class="primary">Connect</button>
                                 <button id="disconnectBtn" disabled>Disconnect</button>
                             </div>
                             <div class="status">
                                 <span class="status-indicator" id="statusIndicator"></span>
                                 <span id="statusText">Ready to connect</span>
-                            </div>
-                        </div>
-
-                        <div class="control-group">
-                            <div class="status" style="margin-top: 0;">
-                                <strong>Instructions:</strong><br>
-                                1. Upload Arduino sketch<br>
-                                2. Click "Connect to Arduino"<br>
-                                3. Select serial port<br>
-                                4. Place finger on sensor
                             </div>
                         </div>
                     </div>
@@ -708,6 +788,26 @@
         const canvas = document.getElementById('visualizer');
         const ctx = canvas.getContext('2d');
 
+        // Theme-aware canvas colors: monotone renders white-on-black,
+        // other themes keep the hue-gradient look
+        function isMonotone() {
+            return document.body.dataset.theme === 'monotone';
+        }
+
+        function seriesColor(t, opacity = 1) {
+            if (isMonotone()) return `rgba(255, 255, 255, ${opacity})`;
+            const hue = colorHueStart + (colorHueEnd - colorHueStart) * t;
+            return `hsla(${hue}, 70%, 60%, ${opacity})`;
+        }
+
+        function fadeFill(alpha) {
+            return isMonotone() ? `rgba(0, 0, 0, ${alpha})` : `rgba(10, 14, 20, ${alpha})`;
+        }
+
+        function accentColor(alpha) {
+            return isMonotone() ? `rgba(255, 255, 255, ${alpha})` : `rgba(0, 255, 200, ${alpha})`;
+        }
+
         // Particle system
         let particles = [];
         const PARTICLE_COUNT = 200;
@@ -784,16 +884,15 @@
 
             draw() {
                 const t = this.freqIndex / 100;
-                const hue = colorHueStart + (colorHueEnd - colorHueStart) * t;
                 const opacity = this.life * 0.8;
 
-                ctx.fillStyle = `hsla(${hue}, 70%, 60%, ${opacity})`;
+                ctx.fillStyle = seriesColor(t, opacity);
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
                 ctx.fill();
 
                 if (Math.abs(this.vx) > 0.2 || Math.abs(this.vy) > 0.2) {
-                    ctx.strokeStyle = `hsla(${hue}, 70%, 60%, ${opacity * 0.3})`;
+                    ctx.strokeStyle = seriesColor(t, opacity * 0.3);
                     ctx.lineWidth = this.size * 0.5;
                     ctx.beginPath();
                     ctx.moveTo(this.x, this.y);
@@ -808,7 +907,7 @@
         }
 
         // Serial connection functions
-        async function connectArduino() {
+        async function connectDevice() {
             if (!('serial' in navigator)) {
                 alert('Web Serial API not supported. Please use Chrome or Edge browser.');
                 return;
@@ -840,12 +939,12 @@
                 visualize();
 
             } catch (error) {
-                console.error('Error connecting to Arduino:', error);
+                console.error('Error connecting to device:', error);
                 document.getElementById('statusText').textContent = 'Connection failed: ' + error.message;
             }
         }
 
-        async function disconnectArduino() {
+        async function disconnectDevice() {
             if (reader) {
                 await reader.cancel();
                 reader = null;
@@ -869,7 +968,7 @@
 
             const width = canvas.width / window.devicePixelRatio;
             const height = canvas.height / window.devicePixelRatio;
-            ctx.fillStyle = '#0a0e14';
+            ctx.fillStyle = fadeFill(1);
             ctx.fillRect(0, 0, width, height);
         }
 
@@ -910,7 +1009,7 @@
 
             if (!receivedFirstData) {
                 receivedFirstData = true;
-                document.getElementById('statusText').textContent = 'Receiving data from Arduino';
+                document.getElementById('statusText').textContent = 'Receiving data';
                 console.log('First serial line received:', JSON.stringify(line));
             }
 
@@ -933,7 +1032,7 @@
                 return;
             }
             if (line === 'READY') {
-                console.log('Arduino ready');
+                console.log('Sensor ready');
                 return;
             }
 
@@ -1000,7 +1099,7 @@
                     break;
 
                 case 'ERROR':
-                    console.error('Arduino error:', parts.slice(1).join(','));
+                    console.error('Sensor error:', parts.slice(1).join(','));
                     break;
 
                 default:
@@ -1031,8 +1130,8 @@
         }
 
         // UI Controls
-        document.getElementById('connectBtn').addEventListener('click', connectArduino);
-        document.getElementById('disconnectBtn').addEventListener('click', disconnectArduino);
+        document.getElementById('connectBtn').addEventListener('click', connectDevice);
+        document.getElementById('disconnectBtn').addEventListener('click', disconnectDevice);
 
         // ===== Pulse Audio controls =====
         function updateAudioButtons() {
@@ -1122,12 +1221,13 @@
             PulseAudio.setReverb(wet);
         });
 
-        // Theme toggle
+        // Theme toggle — cycles default (neon) → high-contrast → monotone
+        const THEMES = ['default', 'high-contrast', 'monotone'];
         document.getElementById('contrastToggle').addEventListener('click', () => {
-            const currentTheme = document.body.dataset.theme;
-            const newTheme = currentTheme === 'default' ? 'high-contrast' : 'default';
+            const current = THEMES.indexOf(document.body.dataset.theme);
+            const newTheme = THEMES[(current + 1) % THEMES.length];
             document.body.dataset.theme = newTheme;
-            document.getElementById('contrastToggle').classList.toggle('active');
+            document.getElementById('contrastToggle').classList.toggle('active', newTheme !== 'default');
         });
 
         // Reduced motion toggle
@@ -1187,7 +1287,7 @@
             const width = canvas.width / window.devicePixelRatio;
             const height = canvas.height / window.devicePixelRatio;
 
-            ctx.fillStyle = 'rgba(10, 14, 20, 0.15)';
+            ctx.fillStyle = fadeFill(0.15);
             ctx.fillRect(0, 0, width, height);
 
             ctx.lineWidth = 2.5;
@@ -1218,7 +1318,7 @@
             const width = canvas.width / window.devicePixelRatio;
             const height = canvas.height / window.devicePixelRatio;
 
-            ctx.fillStyle = 'rgba(10, 14, 20, 0.15)';
+            ctx.fillStyle = fadeFill(0.15);
             ctx.fillRect(0, 0, width, height);
 
             const barWidth = width / FREQUENCY_BINS;
@@ -1226,9 +1326,8 @@
             for (let i = 0; i < FREQUENCY_BINS; i++) {
                 const barHeight = (frequencyBuffer[i] / 255) * height * sensitivity;
                 const t = i / FREQUENCY_BINS;
-                const hue = colorHueStart + (colorHueEnd - colorHueStart) * t;
 
-                ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
+                ctx.fillStyle = seriesColor(t);
                 ctx.fillRect(i * barWidth, height - barHeight, barWidth - 1, barHeight);
             }
         }
@@ -1237,7 +1336,7 @@
             const width = canvas.width / window.devicePixelRatio;
             const height = canvas.height / window.devicePixelRatio;
 
-            ctx.fillStyle = 'rgba(10, 14, 20, 0.15)';
+            ctx.fillStyle = fadeFill(0.15);
             ctx.fillRect(0, 0, width, height);
 
             const centerX = width / 2;
@@ -1245,7 +1344,7 @@
             const radius = Math.min(width, height) * 0.20;
 
             // Draw grid circles
-            ctx.strokeStyle = 'rgba(0, 255, 200, 0.1)';
+            ctx.strokeStyle = accentColor(0.1);
             ctx.lineWidth = 1;
             for (let r = radius * 0.5; r <= radius; r += radius * 0.25) {
                 ctx.beginPath();
@@ -1270,10 +1369,9 @@
                     const y2 = centerY + Math.sin(angle) * (layerRadius + barLength);
 
                     const t = i / lineCount;
-                    const hue = colorHueStart + (colorHueEnd - colorHueStart) * t;
                     const opacity = (0.4 + normalizedValue * 0.6) * (1 - layer * 0.3);
 
-                    ctx.strokeStyle = `hsla(${hue}, 70%, 60%, ${opacity})`;
+                    ctx.strokeStyle = seriesColor(t, opacity);
                     ctx.lineWidth = 1 + normalizedValue * 2;
 
                     ctx.beginPath();
@@ -1288,10 +1386,10 @@
             const pulseRadius = radius * 0.3 * (0.8 + avgAmplitude * 0.4);
 
             ctx.shadowBlur = 15 * avgAmplitude;
-            ctx.shadowColor = `hsl(${colorHueStart}, 70%, 60%)`;
+            ctx.shadowColor = seriesColor(0);
             ctx.beginPath();
             ctx.arc(centerX, centerY, pulseRadius * 0.5, 0, Math.PI * 2);
-            ctx.fillStyle = `hsla(${colorHueStart}, 70%, 60%, ${avgAmplitude * 0.3})`;
+            ctx.fillStyle = seriesColor(0, avgAmplitude * 0.3);
             ctx.fill();
             ctx.shadowBlur = 0;
         }
@@ -1300,7 +1398,7 @@
             const width = canvas.width / window.devicePixelRatio;
             const height = canvas.height / window.devicePixelRatio;
 
-            ctx.fillStyle = 'rgba(10, 14, 20, 0.1)';
+            ctx.fillStyle = fadeFill(0.1);
             ctx.fillRect(0, 0, width, height);
 
             particles.forEach(particle => {
@@ -1324,11 +1422,11 @@
             }
 
             // Clear
-            ctx.fillStyle = '#0a0e14';
+            ctx.fillStyle = fadeFill(1);
             ctx.fillRect(0, 0, width, height);
 
             // Draw grid
-            ctx.strokeStyle = 'rgba(0, 255, 200, 0.25)';
+            ctx.strokeStyle = accentColor(0.25);
             ctx.lineWidth = 0.5;
 
             for (let i = 0; i <= 8; i++) {
@@ -1346,7 +1444,7 @@
             }
 
             // Center line
-            ctx.strokeStyle = 'rgba(0, 255, 200, 0.4)';
+            ctx.strokeStyle = accentColor(0.4);
             ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.moveTo(0, height / 2);
@@ -1361,7 +1459,10 @@
                 const endIdx = Math.floor((segment + 1) * oscilloscopeBuffer.length / 10);
                 const opacity = 0.1 + (segment / 10) * 0.9;
 
-                ctx.strokeStyle = primaryColor.replace(')', `, ${opacity})`).replace('rgb', 'rgba');
+                // globalAlpha handles the trail fade regardless of the
+                // color format the theme variable resolves to
+                ctx.globalAlpha = opacity;
+                ctx.strokeStyle = primaryColor;
                 ctx.lineWidth = 2.5;
                 ctx.shadowBlur = 15 * opacity;
                 ctx.shadowColor = primaryColor;
@@ -1384,6 +1485,7 @@
                 ctx.stroke();
             }
 
+            ctx.globalAlpha = 1;
             ctx.shadowBlur = 0;
         }
 

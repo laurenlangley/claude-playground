@@ -63,7 +63,7 @@ A,<avg_bpm>  (average BPM)
    - **Important**: Web Serial API only works in Chrome/Edge
    - Firefox and Safari are not supported
 
-2. Click **"Connect to Arduino"** button
+2. Click the **"Connect"** button
 
 3. Select your Arduino's serial port from the popup
    - Usually labeled as "USB Serial" or "Arduino"
@@ -100,6 +100,14 @@ Audio starts automatically when you connect to the Arduino. Controls in the **Pu
 - **Filter / Reverb sliders** — manual control (ignored while HRV modulation is on)
 
 Note: Tone.js loads from a CDN, so the audio feature needs an internet connection.
+
+## Themes
+
+The ◐ button in the header cycles through three themes:
+
+1. **Neon** (default) — dark blue background with cyan/magenta accents and hue-gradient visualizations
+2. **High Contrast** — black background with bright cyan
+3. **Monotone** — pure black background with white lines and text; all visualizations render white-on-black (the color sliders have no effect in this theme)
 
 ## Visualization Modes
 
