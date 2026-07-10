@@ -87,6 +87,11 @@ The visualizer includes a four-layer audio engine (`pulse_audio.js`, built on To
 
 Audio starts automatically when you connect to the Arduino. Controls in the **Pulse Audio** panel:
 
+- **Sound Mode**:
+  - **Heartbeat Cascade** (default) — the four-layer cascade fires on every detected heartbeat, following your heart's actual rhythm
+  - **Tempo Poll** — a steady musical clock (default 90 BPM, adjustable 60–140) polls your average heart rate on each tick and plays a note from a minor pentatonic scale: higher reading = higher pitch and louder, no reading = rest. Musical timing stays steady while the data shapes the melody.
+- **Music Tempo slider** — the Tempo Poll clock speed
+
 - **Enable/Disable Pulse Audio** (or press **A**) — mute/unmute the cascade
 - **HRV Modulation** (or press **H**) — maps heart rate variability (RMSSD) to the sound: low HRV = dark filter + dry reverb, high HRV = bright + spacious
 - **RMSSD display** — live short-term HRV metric in ms

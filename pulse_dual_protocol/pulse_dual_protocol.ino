@@ -58,9 +58,13 @@ bool inDip = false;
 unsigned long lastBeatTime = 0;
 
 // ---- BPM averaging ----
-const byte RATE_SIZE = 4;
-int rates[RATE_SIZE];
-byte rateSpot = 0;
+// Averages inter-beat INTERVALS (not BPM values) over a wider window,
+// with median-based outlier rejection so a missed beat or noise dip
+// can't yank the average around.
+const byte IBI_SIZE = 8;
+unsigned int ibis[IBI_SIZE];
+byte ibiSpot = 0;
+byte ibiCount = 0;
 int beatCount = 0;
 int beatAvg = 0;
 
@@ -81,8 +85,42 @@ void resetState() {
   lastBeatTime = 0;
   beatCount = 0;
   beatAvg = 0;
-  rateSpot = 0;
+  ibiSpot = 0;
+  ibiCount = 0;
   Serial.println("F,0");  // Finger removed (visualizer protocol)
+}
+
+// Robust average BPM from the interval buffer:
+// sort a copy, take the median, then average only the intervals within
+// 30% of the median. A missed beat (~2x interval) or a double-trigger
+// gets excluded instead of dragging the reading.
+int computeAvgBPM() {
+  byte n = ibiCount;
+  if (n < 2) return 0;
+
+  unsigned int sorted[IBI_SIZE];
+  for (byte i = 0; i < n; i++) sorted[i] = ibis[i];
+  for (byte i = 1; i < n; i++) {
+    unsigned int key = sorted[i];
+    int j = i - 1;
+    while (j >= 0 && sorted[j] > key) { sorted[j + 1] = sorted[j]; j--; }
+    sorted[j + 1] = key;
+  }
+
+  unsigned int median = sorted[n / 2];
+  unsigned int tol = median * 3 / 10;  // 30% tolerance band
+
+  unsigned long sum = 0;
+  byte cnt = 0;
+  for (byte i = 0; i < n; i++) {
+    unsigned int d = (ibis[i] > median) ? ibis[i] - median : median - ibis[i];
+    if (d <= tol) { sum += ibis[i]; cnt++; }
+  }
+  if (cnt == 0) return 0;
+
+  unsigned long avgIBI = sum / cnt;
+  if (avgIBI == 0) return 0;
+  return (int)((60000UL + avgIBI / 2) / avgIBI);  // rounded, not truncated
 }
 
 void setup() {
@@ -139,7 +177,7 @@ void loop() {
       lastShownFinger = false;
       lastShownAvg = -1;
     }
-    delay(20);
+    delay(10);
     return;
   }
 
@@ -170,21 +208,19 @@ void loop() {
       int bpm = 60000 / interval;
       lastBeatTime = now;
       if (bpm >= 35 && bpm <= 190) {
-        rates[rateSpot++] = bpm;
-        rateSpot %= RATE_SIZE;
+        ibis[ibiSpot++] = (unsigned int)interval;
+        ibiSpot %= IBI_SIZE;
+        if (ibiCount < IBI_SIZE) ibiCount++;
         beatCount++;
 
-        int n = min(beatCount, (int)RATE_SIZE);
-        long sum = 0;
-        for (int i = 0; i < n; i++) sum += rates[i];
-        beatAvg = sum / n;
+        beatAvg = computeAvgBPM();
 
         // ===== VISUALIZER PROTOCOL =====
         // Beat event with instant BPM
         Serial.print("B,");
         Serial.println(bpm);
         // Average BPM update
-        if (beatCount >= 2) {
+        if (beatAvg > 0) {
           Serial.print("A,");
           Serial.println(beatAvg);
         }
@@ -196,7 +232,7 @@ void loop() {
         Serial.print("IBI:");
         Serial.println(interval);
         // Smoothed BPM (only send once we have a meaningful average)
-        if (beatCount >= 2) {
+        if (beatAvg > 0) {
           Serial.print("BPM:");
           Serial.println(beatAvg);
         }
@@ -204,7 +240,7 @@ void loop() {
         beatFlash = true;
         beatFlashTime = now;
 
-        if (beatCount >= 2 && beatAvg != lastShownAvg) {
+        if (beatAvg > 0 && beatAvg != lastShownAvg) {
           showBPM(beatAvg);
           lastShownAvg = beatAvg;
         }
@@ -220,7 +256,9 @@ void loop() {
     if (lastShownAvg >= 0) showBPM(lastShownAvg);
   }
 
-  delay(20);
+  // 10ms matches the sensor's 100 Hz sample rate — halves the beat
+  // timestamp quantization error vs the old 20ms loop
+  delay(10);
 }
 
 // ---------- Display helpers ----------

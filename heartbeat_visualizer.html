@@ -6,6 +6,7 @@
     <title>Arduino Heartbeat Visualizer</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <script src="pulse_audio.js"></script>
+    <script src="pulse_sequencer.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&display=swap');
 
@@ -574,6 +575,24 @@
 
                         <div class="control-group">
                             <div class="slider-label">
+                                <span>Sound Mode</span>
+                            </div>
+                            <div class="button-group">
+                                <button class="sound-mode-btn active" data-sound-mode="cascade">Heartbeat Cascade</button>
+                                <button class="sound-mode-btn" data-sound-mode="sequencer">Tempo Poll</button>
+                            </div>
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>Music Tempo (Tempo Poll)</span>
+                                <span class="slider-value" id="tempoValue">90 BPM</span>
+                            </div>
+                            <input type="range" id="musicTempo" min="60" max="140" step="1" value="90" aria-label="Sequencer musical tempo">
+                        </div>
+
+                        <div class="control-group">
+                            <div class="slider-label">
                                 <span>Chord (Layer 4 Pad)</span>
                             </div>
                             <select id="chordSelect" aria-label="Layer 4 chord" style="width: 100%; min-height: var(--touch-min); background: transparent; border: 1px solid rgba(0, 255, 200, 0.2); color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: var(--font-sm); padding: var(--space-1); cursor: pointer;"></select>
@@ -673,6 +692,8 @@
 
         // Pulse audio state
         let audioEnabled = false;
+        let soundMode = 'cascade';  // 'cascade' = note per heartbeat, 'sequencer' = tempo poll
+        let musicTempo = 90;
 
         // Visualization state
         let currentMode = 'waveform';
@@ -802,6 +823,10 @@
                 await PulseAudio.init();
                 audioEnabled = true;
                 updateAudioButtons();
+                if (soundMode === 'sequencer') {
+                    await PulseSequencer.init();
+                    PulseSequencer.start(musicTempo);
+                }
 
                 isConnected = true;
                 document.getElementById('connectBtn').disabled = true;
@@ -831,6 +856,8 @@
             }
 
             isConnected = false;
+            avgBPM = 0;
+            if (PulseSequencer.isRunning()) PulseSequencer.stop();
             document.getElementById('connectBtn').disabled = false;
             document.getElementById('disconnectBtn').disabled = true;
             document.getElementById('statusIndicator').classList.remove('active');
@@ -889,7 +916,11 @@
 
             // ===== SYNTH PROTOCOL (from pulse_dual_protocol.ino) =====
             if (line === 'BEAT') {
-                if (audioEnabled && PulseAudio.isReady()) PulseAudio.beat();
+                // Cascade mode plays per heartbeat; sequencer mode ignores
+                // beat timing and polls avgBPM on its own musical clock
+                if (audioEnabled && soundMode === 'cascade' && PulseAudio.isReady()) {
+                    PulseAudio.beat();
+                }
                 return;
             }
             if (line.startsWith('IBI:')) {
@@ -958,6 +989,8 @@
                     if (fingerPresent) {
                         document.getElementById('statusText').textContent = 'Measuring heartbeat...';
                     } else {
+                        currentBPM = 0;
+                        avgBPM = 0;  // sequencer polls this — 0 makes it rest
                         document.getElementById('statusText').textContent = 'Place finger on sensor';
                         document.getElementById('overlayBPM').textContent = '--';
                         document.getElementById('overlayStatus').textContent = 'Waiting';
@@ -1018,6 +1051,32 @@
                 audioEnabled = false;
             }
             updateAudioButtons();
+        });
+
+        // Sequencer polls this each musical tick; 0 = rest (no sound)
+        PulseSequencer.setBPMSource(() =>
+            (audioEnabled && fingerPresent && avgBPM > 0) ? avgBPM : 0
+        );
+
+        document.querySelectorAll('.sound-mode-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                document.querySelectorAll('.sound-mode-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                soundMode = e.target.dataset.soundMode;
+
+                if (soundMode === 'sequencer') {
+                    await PulseSequencer.init();
+                    PulseSequencer.start(musicTempo);
+                } else {
+                    PulseSequencer.stop();
+                }
+            });
+        });
+
+        document.getElementById('musicTempo').addEventListener('input', (e) => {
+            musicTempo = parseInt(e.target.value);
+            document.getElementById('tempoValue').textContent = musicTempo + ' BPM';
+            PulseSequencer.setTempo(musicTempo);
         });
 
         document.getElementById('hrvToggleBtn').addEventListener('click', () => {
