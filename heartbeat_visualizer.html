@@ -585,10 +585,10 @@
 
                         <div class="slider-group">
                             <div class="slider-label">
-                                <span>Music Tempo (Tempo Poll)</span>
-                                <span class="slider-value" id="tempoValue">90 BPM</span>
+                                <span>Poll Rate (Tempo Poll)</span>
+                                <span class="slider-value" id="tempoValue">90 BPM (0.7s/poll)</span>
                             </div>
-                            <input type="range" id="musicTempo" min="60" max="140" step="1" value="90" aria-label="Sequencer musical tempo">
+                            <input type="range" id="musicTempo" min="15" max="140" step="1" value="90" aria-label="Sequencer poll rate as musical tempo">
                         </div>
 
                         <div class="control-group">
@@ -1075,7 +1075,8 @@
 
         document.getElementById('musicTempo').addEventListener('input', (e) => {
             musicTempo = parseInt(e.target.value);
-            document.getElementById('tempoValue').textContent = musicTempo + ' BPM';
+            const secsPerPoll = (60 / musicTempo).toFixed(1);
+            document.getElementById('tempoValue').textContent = `${musicTempo} BPM (${secsPerPoll}s/poll)`;
             PulseSequencer.setTempo(musicTempo);
         });
 
