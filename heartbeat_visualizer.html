@@ -18,6 +18,9 @@
             --color-heart: #00ffc8;
             --color-lung: #ff006e;
 
+            /* Accent used for button hover/active tints (R,G,B) */
+            --accent-rgb: 0, 255, 200;
+
             /* Theme Colors */
             --bg-primary: #0a0e14;
             --bg-secondary: #151a23;
@@ -52,6 +55,7 @@
             --color-primary: #00ffff;
             --text-primary: #ffffff;
             --grid-color: rgba(0, 255, 255, 0.3);
+            --accent-rgb: 0, 255, 255;
         }
 
         /* ============================================================
@@ -76,6 +80,7 @@
             --text-primary: #e4ebf5;
             --text-secondary: #8ba0bd;
             --grid-color: rgba(205, 217, 236, 0.12);
+            --accent-rgb: 208, 110, 124;   /* madder */
         }
 
         /* --- Paper (light) --- */
@@ -91,6 +96,7 @@
             --text-primary: #2c2618;
             --text-secondary: #6b5f47;
             --grid-color: rgba(58, 50, 34, 0.12);
+            --accent-rgb: 168, 69, 47;   /* madder */
         }
 
         /* Shared geometric-theme chrome (both variants) */
@@ -127,6 +133,31 @@
             opacity: 0.85;
         }
 
+        /* Palette-aligned hover/active: buttons pick up the theme's
+           madder accent instead of the neon cyan */
+        [data-theme="blueprint"] button:not(.icon-button):not(.accordion-header):hover,
+        [data-theme="paper"] button:not(.icon-button):not(.accordion-header):hover,
+        [data-theme="blueprint"] button.active,
+        [data-theme="paper"] button.active {
+            border-color: var(--color-secondary);
+            color: var(--color-secondary);
+            opacity: 1;
+        }
+
+        [data-theme="blueprint"] button.primary,
+        [data-theme="paper"] button.primary {
+            background: var(--color-secondary);
+            border-color: var(--color-secondary);
+            color: var(--bg-primary);
+            opacity: 1;
+        }
+
+        [data-theme="blueprint"] button.primary:hover,
+        [data-theme="paper"] button.primary:hover {
+            background: transparent;
+            color: var(--color-secondary);
+        }
+
         [data-theme="blueprint"] .status,
         [data-theme="paper"] .status {
             background: var(--grid-color);
@@ -135,8 +166,7 @@
 
         [data-theme="blueprint"] input[type="range"]::-webkit-slider-thumb,
         [data-theme="paper"] input[type="range"]::-webkit-slider-thumb {
-            box-shadow: none;
-            border-radius: 0;   /* square engraved marker, not a glowing dot */
+            box-shadow: none;   /* round marker, no neon glow */
         }
 
         [data-theme="blueprint"] .info-overlay,
@@ -172,11 +202,6 @@
             background: rgba(236, 227, 208, 0.95);
         }
 
-        /* Overrides the select's inline border color */
-        [data-theme="blueprint"] #chordSelect,
-        [data-theme="paper"] #chordSelect {
-            border-color: var(--color-primary) !important;
-        }
 
         * {
             margin: 0;
@@ -377,6 +402,19 @@
             gap: var(--space-1);
         }
 
+        /* Chord selector: all options in a single row */
+        .chord-row {
+            display: flex;
+            gap: 4px;
+        }
+
+        .chord-row button {
+            flex: 1;
+            padding: var(--space-1) 2px !important;
+            font-size: var(--font-xs) !important;
+            min-height: var(--touch-min);
+        }
+
         button:not(.icon-button):not(.accordion-header) {
             background: transparent;
             border: 1px solid rgba(0, 255, 200, 0.2);
@@ -394,10 +432,11 @@
         button:not(.icon-button):hover {
             border-color: var(--color-primary);
             color: var(--color-primary);
+            background: rgba(var(--accent-rgb), 0.07);
         }
 
         button.active {
-            background: rgba(0, 255, 200, 0.1);
+            background: rgba(var(--accent-rgb), 0.14);
             border-color: var(--color-primary);
             color: var(--color-primary);
         }
@@ -675,16 +714,16 @@
                     </div>
                 </div>
 
-                <!-- Pulse Audio Section -->
+                <!-- Audio Section -->
                 <div class="accordion-section" data-section="pulse-audio">
                     <div class="accordion-header" role="button" tabindex="0" aria-expanded="true">
-                        <span class="accordion-title">Pulse Audio</span>
+                        <span class="accordion-title">Audio</span>
                         <span class="accordion-icon">▼</span>
                     </div>
                     <div class="accordion-content">
                         <div class="control-group">
                             <div class="button-group">
-                                <button id="audioToggleBtn">Enable Pulse Audio</button>
+                                <button id="audioToggleBtn">Enable Audio</button>
                                 <button id="hrvToggleBtn" disabled>Enable HRV Modulation</button>
                             </div>
                             <div class="status">
@@ -714,7 +753,7 @@
                             <div class="slider-label">
                                 <span>Chord (Layer 4 Pad)</span>
                             </div>
-                            <select id="chordSelect" aria-label="Layer 4 chord" style="width: 100%; min-height: var(--touch-min); background: transparent; border: 1px solid rgba(0, 255, 200, 0.2); color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: var(--font-sm); padding: var(--space-1); cursor: pointer;"></select>
+                            <div class="chord-row" id="chordButtons" role="group" aria-label="Layer 4 chord"></div>
                         </div>
 
                         <div class="slider-group">
@@ -1223,7 +1262,7 @@
         function updateAudioButtons() {
             const audioBtn = document.getElementById('audioToggleBtn');
             const hrvBtn = document.getElementById('hrvToggleBtn');
-            audioBtn.textContent = audioEnabled ? 'Disable Pulse Audio' : 'Enable Pulse Audio';
+            audioBtn.textContent = audioEnabled ? 'Disable Audio' : 'Enable Audio';
             audioBtn.classList.toggle('active', audioEnabled);
             hrvBtn.disabled = !audioEnabled;
         }
@@ -1273,16 +1312,20 @@
             btn.classList.toggle('active', on);
         });
 
-        // Populate chord dropdown from the audio engine
-        const chordSelect = document.getElementById('chordSelect');
-        PulseAudio.getChords().forEach(name => {
-            const option = document.createElement('option');
-            option.value = name;
-            option.textContent = name;
-            chordSelect.appendChild(option);
-        });
-        chordSelect.addEventListener('change', (e) => {
-            PulseAudio.setChord(e.target.value);
+        // Build chord selector as a row of buttons from the audio engine
+        const chordButtons = document.getElementById('chordButtons');
+        const chords = PulseAudio.getChords();
+        chords.forEach((name, i) => {
+            const btn = document.createElement('button');
+            btn.textContent = name;
+            btn.dataset.chord = name;
+            if (i === 0) btn.classList.add('active');  // Am is the engine default
+            btn.addEventListener('click', () => {
+                chordButtons.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                PulseAudio.setChord(name);
+            });
+            chordButtons.appendChild(btn);
         });
 
         // Layer volume sliders
