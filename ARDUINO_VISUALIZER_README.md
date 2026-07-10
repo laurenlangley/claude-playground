@@ -74,6 +74,28 @@ A,<avg_bpm>  (average BPM)
 
 5. Watch the visualization come alive!
 
+## Pulse Audio (Heartbeat Sonification)
+
+The visualizer includes a four-layer audio engine (`pulse_audio.js`, built on Tone.js) that turns each heartbeat into a sonic cascade:
+
+1. **Layer 1** — R-peak percussive kick (t=0)
+2. **Layer 2** — T-wave sub bass (t+100ms)
+3. **Layer 3** — Pulse-arrival FM synth through a filter (t+250ms)
+4. **Layer 4** — Chord pad with reverb (t+400ms)
+
+**Requires the dual-protocol sketch**: upload `pulse_dual_protocol/pulse_dual_protocol.ino` instead of the original sketch. It sends everything the visualizer already used (`W,`/`B,`/`A,`/`F,`) plus `BEAT`, `IBI:<ms>`, and `BPM:<avg>` lines that drive the audio engine.
+
+Audio starts automatically when you connect to the Arduino. Controls in the **Pulse Audio** panel:
+
+- **Enable/Disable Pulse Audio** (or press **A**) — mute/unmute the cascade
+- **HRV Modulation** (or press **H**) — maps heart rate variability (RMSSD) to the sound: low HRV = dark filter + dry reverb, high HRV = bright + spacious
+- **RMSSD display** — live short-term HRV metric in ms
+- **Chord dropdown** — pick the Layer 4 pad chord (Am, Cmaj7, Dm9, Fmaj7, G6, Emin)
+- **Layer volume sliders** — per-layer level in dB
+- **Filter / Reverb sliders** — manual control (ignored while HRV modulation is on)
+
+Note: Tone.js loads from a CDN, so the audio feature needs an internet connection.
+
 ## Visualization Modes
 
 The visualizer offers 5 different modes (press 1-5 to switch):

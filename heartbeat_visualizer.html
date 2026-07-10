@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arduino Heartbeat Visualizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script src="pulse_audio.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&display=swap');
 
@@ -553,6 +555,80 @@
                     </div>
                 </div>
 
+                <!-- Pulse Audio Section -->
+                <div class="accordion-section" data-section="pulse-audio">
+                    <div class="accordion-header" role="button" tabindex="0" aria-expanded="true">
+                        <span class="accordion-title">Pulse Audio</span>
+                        <span class="accordion-icon">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="control-group">
+                            <div class="button-group">
+                                <button id="audioToggleBtn">Enable Pulse Audio</button>
+                                <button id="hrvToggleBtn" disabled>Enable HRV Modulation</button>
+                            </div>
+                            <div class="status">
+                                <strong>RMSSD (HRV):</strong> <span id="rmssdValue" style="color: var(--color-primary);">-- ms</span>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <div class="slider-label">
+                                <span>Chord (Layer 4 Pad)</span>
+                            </div>
+                            <select id="chordSelect" aria-label="Layer 4 chord" style="width: 100%; min-height: var(--touch-min); background: transparent; border: 1px solid rgba(0, 255, 200, 0.2); color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: var(--font-sm); padding: var(--space-1); cursor: pointer;"></select>
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>Layer 1 · Kick</span>
+                                <span class="slider-value" id="layer1Value">-6 dB</span>
+                            </div>
+                            <input type="range" id="layer1Level" min="-60" max="0" step="1" value="-6" aria-label="Layer 1 volume">
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>Layer 2 · Bass</span>
+                                <span class="slider-value" id="layer2Value">-14 dB</span>
+                            </div>
+                            <input type="range" id="layer2Level" min="-60" max="0" step="1" value="-14" aria-label="Layer 2 volume">
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>Layer 3 · FM Pulse</span>
+                                <span class="slider-value" id="layer3Value">-18 dB</span>
+                            </div>
+                            <input type="range" id="layer3Level" min="-60" max="0" step="1" value="-18" aria-label="Layer 3 volume">
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>Layer 4 · Chord Pad</span>
+                                <span class="slider-value" id="layer4Value">-20 dB</span>
+                            </div>
+                            <input type="range" id="layer4Level" min="-60" max="0" step="1" value="-20" aria-label="Layer 4 volume">
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>Filter Cutoff</span>
+                                <span class="slider-value" id="filterValue">2000 Hz</span>
+                            </div>
+                            <input type="range" id="filterCutoff" min="400" max="6000" step="50" value="2000" aria-label="Layer 3 filter cutoff">
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-label">
+                                <span>Reverb</span>
+                                <span class="slider-value" id="reverbValue">0.60</span>
+                            </div>
+                            <input type="range" id="reverbAmount" min="0" max="1" step="0.05" value="0.6" aria-label="Layer 4 reverb amount">
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Analysis Output Section -->
                 <div class="accordion-section" data-section="analysis">
                     <div class="accordion-header" role="button" tabindex="0" aria-expanded="true">
@@ -594,6 +670,9 @@
         let avgBPM = 0;
         let fingerPresent = false;
         let lastBeatTime = 0;
+
+        // Pulse audio state
+        let audioEnabled = false;
 
         // Visualization state
         let currentMode = 'waveform';
@@ -719,6 +798,11 @@
                 port = await navigator.serial.requestPort();
                 await port.open({ baudRate: 115200 });
 
+                // Start the pulse audio engine (must happen inside a user gesture)
+                await PulseAudio.init();
+                audioEnabled = true;
+                updateAudioButtons();
+
                 isConnected = true;
                 document.getElementById('connectBtn').disabled = true;
                 document.getElementById('disconnectBtn').disabled = false;
@@ -803,10 +887,29 @@
                 console.log('First serial line received:', JSON.stringify(line));
             }
 
-            // Parse data format: W,value | B,bpm | A,avgbpm | F,0/1
+            // ===== SYNTH PROTOCOL (from pulse_dual_protocol.ino) =====
+            if (line === 'BEAT') {
+                if (audioEnabled && PulseAudio.isReady()) PulseAudio.beat();
+                return;
+            }
+            if (line.startsWith('IBI:')) {
+                const ibi = parseInt(line.slice(4));
+                if (!isNaN(ibi) && PulseAudio.isReady()) PulseAudio.setIBI(ibi);
+                return;
+            }
+            if (line.startsWith('BPM:')) {
+                // Smoothed BPM — already displayed via the A, line
+                return;
+            }
+            if (line === 'READY') {
+                console.log('Arduino ready');
+                return;
+            }
+
+            // ===== VISUALIZER PROTOCOL: W,value | B,bpm | A,avgbpm | F,0/1 =====
             const parts = line.split(',');
             if (parts.length < 2) {
-                // Lines like "READY" or output from a different sketch land here
+                // Output from a different sketch lands here
                 console.log('Serial (unrecognized):', line);
                 return;
             }
@@ -897,6 +1000,67 @@
         // UI Controls
         document.getElementById('connectBtn').addEventListener('click', connectArduino);
         document.getElementById('disconnectBtn').addEventListener('click', disconnectArduino);
+
+        // ===== Pulse Audio controls =====
+        function updateAudioButtons() {
+            const audioBtn = document.getElementById('audioToggleBtn');
+            const hrvBtn = document.getElementById('hrvToggleBtn');
+            audioBtn.textContent = audioEnabled ? 'Disable Pulse Audio' : 'Enable Pulse Audio';
+            audioBtn.classList.toggle('active', audioEnabled);
+            hrvBtn.disabled = !audioEnabled;
+        }
+
+        document.getElementById('audioToggleBtn').addEventListener('click', async () => {
+            if (!audioEnabled) {
+                await PulseAudio.init();
+                audioEnabled = true;
+            } else {
+                audioEnabled = false;
+            }
+            updateAudioButtons();
+        });
+
+        document.getElementById('hrvToggleBtn').addEventListener('click', () => {
+            const on = !PulseAudio.isHRVModEnabled();
+            PulseAudio.setHRVMod(on);
+            const btn = document.getElementById('hrvToggleBtn');
+            btn.textContent = on ? 'Disable HRV Modulation' : 'Enable HRV Modulation';
+            btn.classList.toggle('active', on);
+        });
+
+        // Populate chord dropdown from the audio engine
+        const chordSelect = document.getElementById('chordSelect');
+        PulseAudio.getChords().forEach(name => {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            chordSelect.appendChild(option);
+        });
+        chordSelect.addEventListener('change', (e) => {
+            PulseAudio.setChord(e.target.value);
+        });
+
+        // Layer volume sliders
+        [1, 2, 3, 4].forEach(n => {
+            document.getElementById(`layer${n}Level`).addEventListener('input', (e) => {
+                const dB = parseInt(e.target.value);
+                document.getElementById(`layer${n}Value`).textContent = dB + ' dB';
+                PulseAudio.setLayerLevel(n, dB);
+            });
+        });
+
+        // Filter and reverb (ignored by the engine while HRV modulation is on)
+        document.getElementById('filterCutoff').addEventListener('input', (e) => {
+            const hz = parseInt(e.target.value);
+            document.getElementById('filterValue').textContent = hz + ' Hz';
+            PulseAudio.setFilter(hz);
+        });
+
+        document.getElementById('reverbAmount').addEventListener('input', (e) => {
+            const wet = parseFloat(e.target.value);
+            document.getElementById('reverbValue').textContent = wet.toFixed(2);
+            PulseAudio.setReverb(wet);
+        });
 
         // Theme toggle
         document.getElementById('contrastToggle').addEventListener('click', () => {
@@ -1169,6 +1333,13 @@
 
             if (!isConnected) return;
 
+            // Update HRV readout
+            if (PulseAudio.isReady()) {
+                const rmssd = PulseAudio.getRMSSD();
+                document.getElementById('rmssdValue').textContent =
+                    rmssd > 0 ? rmssd.toFixed(1) + ' ms' : '-- ms';
+            }
+
             switch (currentMode) {
                 case 'waveform':
                     drawWaveform();
@@ -1199,6 +1370,16 @@
                         document.getElementById('connectBtn').click();
                     } else {
                         document.getElementById('disconnectBtn').click();
+                    }
+                    break;
+                case 'a':
+                case 'A':
+                    document.getElementById('audioToggleBtn').click();
+                    break;
+                case 'h':
+                case 'H':
+                    if (!document.getElementById('hrvToggleBtn').disabled) {
+                        document.getElementById('hrvToggleBtn').click();
                     }
                     break;
                 case '1':
