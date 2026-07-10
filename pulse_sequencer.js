@@ -42,9 +42,20 @@ const PulseSequencer = (() => {
   const BASE = {
     kick: 'C2',
     bass: 'A1',
-    fm: 'E4',
-    chord: ['A3', 'C4', 'E4', 'A4']
+    fm: 'E4'
   };
+
+  // Chord voicings — same set as pulse_audio.js so the chord selector
+  // drives both sound modes identically
+  const CHORDS = {
+    'Am':     ['A3', 'C4', 'E4', 'A4'],
+    'Cmaj7':  ['C3', 'E3', 'G3', 'B3'],
+    'Dm9':    ['D3', 'F3', 'A3', 'E4'],
+    'Fmaj7':  ['F2', 'A3', 'C4', 'E4'],
+    'G6':     ['G2', 'D3', 'E3', 'B3'],
+    'Emin':   ['E2', 'G3', 'B3', 'E4']
+  };
+  let currentChord = 'Am';
 
   // Four-layer graph mirroring pulse_audio.js so both sound modes
   // share one sonic identity
@@ -136,8 +147,9 @@ const PulseSequencer = (() => {
             transpose(BASE.bass, offset), '4n', time + 0.100, velocity);
           graph.fm.triggerAttackRelease(
             transpose(BASE.fm, offset), '8n', time + 0.250, velocity);
+          // Selected chord voicing, transposed by the BPM offset
           graph.pad.triggerAttackRelease(
-            BASE.chord.map(n => transpose(n, offset)), '2n', time + 0.400, velocity * 0.8);
+            CHORDS[currentChord].map(n => transpose(n, offset)), '2n', time + 0.400, velocity * 0.8);
         }, '4n');
       }
       loop.start(0);
@@ -154,6 +166,11 @@ const PulseSequencer = (() => {
     /** Change the musical tempo while running. */
     setTempo(tempo) {
       Tone.Transport.bpm.value = tempo;
+    },
+
+    /** Set the chord voicing for the pad layer (matches pulse_audio.js). */
+    setChord(name) {
+      if (CHORDS[name]) currentChord = name;
     },
 
     isRunning() {

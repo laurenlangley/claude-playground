@@ -134,26 +134,27 @@
         }
 
         /* Palette-aligned hover/active: buttons pick up the theme's
-           madder accent instead of the neon cyan */
+           madder accent instead of the neon cyan. Full :not() qualifiers
+           keep these ahead of the geometric base rule above. */
         [data-theme="blueprint"] button:not(.icon-button):not(.accordion-header):hover,
         [data-theme="paper"] button:not(.icon-button):not(.accordion-header):hover,
-        [data-theme="blueprint"] button.active,
-        [data-theme="paper"] button.active {
+        [data-theme="blueprint"] button:not(.icon-button):not(.accordion-header).active,
+        [data-theme="paper"] button:not(.icon-button):not(.accordion-header).active {
             border-color: var(--color-secondary);
             color: var(--color-secondary);
             opacity: 1;
         }
 
-        [data-theme="blueprint"] button.primary,
-        [data-theme="paper"] button.primary {
+        [data-theme="blueprint"] button:not(.icon-button):not(.accordion-header).primary,
+        [data-theme="paper"] button:not(.icon-button):not(.accordion-header).primary {
             background: var(--color-secondary);
             border-color: var(--color-secondary);
             color: var(--bg-primary);
             opacity: 1;
         }
 
-        [data-theme="blueprint"] button.primary:hover,
-        [data-theme="paper"] button.primary:hover {
+        [data-theme="blueprint"] button:not(.icon-button):not(.accordion-header).primary:hover,
+        [data-theme="paper"] button:not(.icon-button):not(.accordion-header).primary:hover {
             background: transparent;
             color: var(--color-secondary);
         }
@@ -429,26 +430,30 @@
             min-height: var(--touch-min);
         }
 
-        button:not(.icon-button):hover {
+        /* State rules carry the same :not() qualifiers as the base rule
+           above so they match its (0,2,1) specificity and actually win —
+           a plain `button.active` (0,1,1) would lose to the base. */
+        button:not(.icon-button):not(.accordion-header):hover {
             border-color: var(--color-primary);
             color: var(--color-primary);
             background: rgba(var(--accent-rgb), 0.07);
         }
 
-        button.active {
-            background: rgba(var(--accent-rgb), 0.14);
+        button:not(.icon-button):not(.accordion-header).active {
+            background: rgba(var(--accent-rgb), 0.16);
             border-color: var(--color-primary);
             color: var(--color-primary);
         }
 
-        button.primary {
+        button:not(.icon-button):not(.accordion-header).primary {
             background: var(--color-primary);
             color: var(--bg-primary);
             border-color: var(--color-primary);
             font-weight: 600;
+            opacity: 1;
         }
 
-        button.primary:hover {
+        button:not(.icon-button):not(.accordion-header).primary:hover {
             background: transparent;
             color: var(--color-primary);
         }
@@ -1323,7 +1328,8 @@
             btn.addEventListener('click', () => {
                 chordButtons.querySelectorAll('button').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                PulseAudio.setChord(name);
+                PulseAudio.setChord(name);      // cascade mode
+                PulseSequencer.setChord(name);  // tempo poll mode
             });
             chordButtons.appendChild(btn);
         });
