@@ -1,0 +1,22 @@
+{
+  "name": "noisefloor",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "worklets": "node scripts/build-worklets.mjs",
+    "dev": "npm run worklets && vite",
+    "build": "npm run worklets && tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "seam": "node scripts/seam-test.ts",
+    "loudness": "node scripts/measure-loudness.ts",
+    "iso226": "node scripts/iso226.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "esbuild": "^0.25.0",
+    "playwright-core": "^1.62.1",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0"
+  }
+}

@@ -325,11 +325,49 @@ pass is a separate session.
 
 ---
 
-## Open questions
+## Decisions taken
 
-1. **Calibration** — loudness matching at operating level (1.1), or the weighted
-   threshold compromise?
-2. **Exposure guard** — ship the headphone-sensitivity SPL estimator with stated
-   ±6 dB uncertainty, or keep it relative-only and let the procedure carry it?
-3. **Scope for this session** — steps 1–3 and stop with an ugly, correct
-   instrument, or push further?
+Answered at the checkpoint, before any engine code:
+
+1. **Calibration** — loudness matching at operating level. The threshold task is
+   out. Not built yet (step 6); `src/audio/output.ts` documents the framing it
+   has to serve.
+2. **Exposure guard** — real headroom limit, labelled as a headroom limit, plus
+   an optional SPL *estimate* carrying its ±6 dB uncertainty, plus the procedure
+   ("raise it until speech stops being intelligible, then stop") doing the
+   actual work. Implemented in `src/audio/output.ts`.
+3. **Scope** — steps 1–3. Engine, shaper, drone bus, verified, with an
+   intentionally unstyled interface. The design pass is a separate session.
+
+## What changed once the numbers were in
+
+Two things in section 1 got sharper after being measured rather than reasoned
+about, and one test had to be fixed:
+
+- **The drone's spectral shape** (1.3) turned out to be even less like a filter
+  than the slope arithmetic suggested. The 63 Hz band contains no partial at
+  all — the lowest is A2 at 109.7 Hz, and octave bands run 45–90 Hz — so its
+  9.8% is room and difference-tone energy, with 55.2 Hz falling directly in it.
+  That is independent corroboration of the difference-tone reading. It is not
+  synthesised, because inventing it would be manufacturing a mechanism.
+- **Brown noise measures −5.74 dB/oct**, not −6.02, which looks like a bug and
+  is not: it is within ±0.2 dB from 125 Hz to 4 kHz, and the fit is dragged by
+  −1.91 dB at 31.5 Hz (the deliberate 20 Hz leak) and +1.73 dB at 16 kHz (the
+  digital one-pole flattening toward Nyquist). Both are documented in
+  `docs/measurements.md` rather than papered over.
+- **The seam test's block-collision check gave a false failure** on its first
+  8-hour run: one "identical" block in brown. That was a 32-bit hash collision,
+  not a repeat — 57,600 blocks in a 2^32 space collide with probability
+  1 − exp(−57600²/2³³) ≈ 32%. Widened to 64 bits, where the same figure is
+  ~9e-11.
+
+## Instrumentation note
+
+`AudioWorkletGlobalScope` has no `performance` object (verified in Chrome 141),
+so there is no high-resolution clock on the audio thread. `Date` is there at
+1 ms resolution, which cannot time a 2.7 ms quantum directly but can time many
+of them in aggregate: if a quantum takes t ms with t < 1, a millisecond boundary
+falls inside it with probability exactly t, so the mean of
+`Date.now() after − Date.now() before` over N quanta is an unbiased estimator of
+t. See `src/worklets/noise-processor.ts`. The estimate agrees with the offline
+Node measurement to the reported precision, which is the point of having both.
