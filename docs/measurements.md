@@ -77,6 +77,75 @@ Within ±0.2 dB from 125 Hz to 4 kHz. The two ends:
 
 Neither is worth fixing. Both are worth knowing about.
 
+## Seamlessness — 8 hours per generator
+
+`npm run seam -- --hours=8`. 1,382,400,000 samples each at 48 kHz.
+
+This is the requirement that makes the rest of the app pointless if it is wrong,
+so it gets four independent detectors rather than a listen.
+
+| | White | Pink | Brown |
+|---|---|---|---|
+| Peak | 0.1003 | 0.3496 | 0.6213 |
+| DC offset | 7.6e-7 | 2.7e-5 | −5.3e-8 |
+| Non-finite samples | 0 | 0 | 0 |
+| Identical 0.5 s blocks | 0 | 0 | 0 |
+| Autocorrelation 0.5–21 s | 5.9× baseline | 3.6× | 4.0× |
+| Envelope autocorrelation | 4.5× baseline | 4.2× | 4.6× |
+| RMS drift, first → last | −0.000 dB | +0.037 dB | +0.126 dB |
+| Render throughput | 18.3 Ms/s | 16.3 Ms/s | 18.3 Ms/s |
+
+**All three pass.** Thresholds: 12× baseline for both autocorrelations, 0.2 dB
+for drift, zero for collisions and non-finite samples.
+
+### Why autocorrelation is measured as prominence, not magnitude
+
+Brown noise is white through a 20 Hz leaky integrator, so it has a real
+correlation time of about 8 ms and shows genuine non-zero correlation at short
+lags that has nothing to do with periodicity. An early version of this test
+failed brown at 50 ms lag for exactly that reason — the test was wrong, not the
+generator.
+
+A loop does not look like elevated correlation. It looks like a *spike* standing
+out of the local baseline. So the test reports max|r| divided by the RMS of r
+across the search range. Broadband noise lands at 3.6–5.9×, which is just the
+expected maximum of that many near-Gaussian samples. There is a wide margin
+between that and the threshold.
+
+### Negative control
+
+A test that cannot fail measures nothing. Feeding the same analysis a 10-second
+loop of pink noise, which is what a sample-playback app ships:
+
+```
+looped signal: max|r| = 0.7714 at 10.00 s, prominence 50.4x baseline
+identical 0.5 s blocks in looped signal: 67
+```
+
+Both detectors fire, and the autocorrelation peak lands on the loop length to
+two decimal places.
+
+### The false failure that had to be fixed
+
+The first 8-hour run reported one identical block in brown. That was a hash
+collision, not a repeat: the block hash was 32 bits, and 57,600 blocks in a 2³²
+space collide with probability 1 − exp(−57600²/2³³) = **32%**. Widened to 64
+bits (two independent FNV-1a variants), where the same probability is about
+9e-11. Zero collisions across all three generators since.
+
+### Brown's 0.126 dB drift
+
+The largest of the three, and still comfortably inside the threshold. It is 1/f²
+level wander, not integrator drift: the DC offset over the full 8 hours is
+−5.3e-8, which is the DC blocker doing its job. The 3.59 dB RMS spread across
+the run is the same thing — brown's one-second RMS genuinely varies that much,
+by construction.
+
+### What this does not replace
+
+None of it substitutes for listening. Per the brief: 30+ minutes, eyes closed,
+before anything is built on top.
+
 ## Audio-thread cost
 
 There is no high-resolution clock in `AudioWorkletGlobalScope` — `performance`
